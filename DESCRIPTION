@@ -1,0 +1,31 @@
+Package: sociometrics
+Type: Package
+Title: Managing and analyzing timestamped sociometric data
+Version: 0.1.0
+Author: Jörg Müller
+Maintainer: Jörg Müller <jmuller@uoc.edu>
+Authors@R: person("Jörg", "Last", email = "jmuller@uoc.edu", role = c("aut", "cre"))
+Description: Collection of tools for working with sensor derived sociometric data. Most functions are utilities
+  for reading EXCEL files exported from the Sociometric DataLab and converting these into 
+  tidy data frames. Sociometric data include "Interactions" based upon Bluetooth- and Infrared sensors.
+  Bluetooth provides information about physical "proximity" while Infrared data indicates face-to-face
+  interaction. Microphone derived measures include volume, pitch, speech- and participation profile, 
+  turn-taking as well as different frequency bands. Accelerometer data include body activity, posture,
+  and corresponding mirroring data.
+  The package provides for quick explorations of these different data types as well as more specific 
+  functionalities to feed sociometric data to other downstream analysis. 
+  The devepment of the code has been carried out within the framework of the H2020 \href{http://www.gedii.eu}{GEDII} project, 
+  which has received financing from the European Commission under the Grant Agreement nº 665851. 
+Imports:
+  readr,
+  dplyr,
+  tidyr, 
+  readxl, 
+  stringr, 
+  lubridate,
+License: GPL-3 | file LICENSE
+URL: http://www.gedii.eu
+BugReports: https://github.com/jmueller17/sociometrics/issues
+Encoding: UTF-8
+LazyData: true 
+RoxygenNote: 6.0.1

@@ -1,0 +1,23 @@
+---
+title: "Package Sociometrics"
+author: "Jörg Müller"
+date: "May 6, 2018"
+output: html_document
+---
+
+## Package Sociometrics
+
+### Managing and analyzing timestamped sociometric data
+
+Collection of tools for working with sensor derived sociometric data. Most functions are utilities
+  for reading EXCEL files exported from the Sociometric DataLab and converting these into 
+  tidy data frames. Sociometric data include "Interactions" based upon Bluetooth- and Infrared sensors.
+  
+  Bluetooth provides information about physical "proximity" while Infrared data indicates face-to-face
+  interaction. Microphone derived measures include volume, pitch, speech- and participation profile, 
+  turn-taking as well as different frequency bands. Accelerometer data include body activity, posture,
+  and corresponding mirroring data.
+  
+  The package provides for quick explorations of these different data types as well as more specific 
+  functionalities to feed sociometric data to other downstream analysis. 
+  The devepment of the code has been carried out within the framework of the H2020 [GEDII](http://www.gedii.eu) project, which has received financing from the European Commission under the Grant Agreement nº 665851. 
