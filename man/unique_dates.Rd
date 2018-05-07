@@ -7,7 +7,7 @@
 unique_dates(x, ts_format = "\%Y-\%m-\%d")
 }
 \arguments{
-\item{x}{Vector of timestamped data}
+\item{x}{Data frame with column "Timestamp" or vector of timestamp data.}
 
 \item{ts_format}{String. Indicating the format of the specified date}
 }

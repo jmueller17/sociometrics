@@ -1,15 +1,8 @@
----
-title: "Package Sociometrics"
-author: "Jörg Müller"
-date: "May 6, 2018"
-output: html_document
----
-
-## Package Sociometrics
+## R Package Sociometrics
 
 ### Managing and analyzing timestamped sociometric data
 
-Collection of tools for working with sensor derived sociometric data. Most functions are utilities
+Collection of R tools for working with sensor derived sociometric data. Most functions are utilities
   for reading EXCEL files exported from the Sociometric DataLab and converting these into 
   tidy data frames. Sociometric data include "Interactions" based upon Bluetooth- and Infrared sensors.
   

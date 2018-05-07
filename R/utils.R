@@ -3,7 +3,7 @@
 #' @description Convenient way to retrieve all unique dates - usually days - within data set.
 #'  Retrieves the unique days ignoring hour, minute and sec information.
 #'
-#' @param x Vector of timestamped data
+#' @param x Data frame with column "Timestamp" or vector of timestamp data.
 #' @param ts_format String. Indicating the format of the specified date
 #'
 #' @return String of unique day-dates.
@@ -12,11 +12,18 @@
 #'
 #' @export
 unique_dates <- function(x, ts_format="%Y-%m-%d"){
+
+  if (is.data.frame(x) & "Timestamp" %in% names(x) ){
+    x <- x$Timestamp
+  }
+
   if ("POSIXct" %in% class(x) ) {
     paste(unique(format(x, ts_format)), collapse=", ")
   } else {
     warning("x is not date object")
   }
+
+
 }
 
 
