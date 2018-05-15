@@ -20,13 +20,14 @@
 #'  to \code{replv=TRUE} will replace IDs with numbers starting from 1..n. Provide \code{replv=data.frame} with
 #'  values: First column holds original values, second column replacement values.
 #' @param delim Single delimiter character for reading CSV data. Ignored for Excel files.
-#' @param format Format for parsing of timestamp data. Holds a series pre-established
-#'  timestamp formats. See  \code{\link{parse.smtrx}} for details. Reading excel sheets recognizes
-#'  date time objects. CSV files read character representations of dates which need the \code{format}
-#'  specified.
-#' @param cls Character. Vector of class names. Default \code{cls=NULL} using pre-defined sociometric
-#'  classes and subclass names. The class name indicates the corresponding parser to read data files
-#'  and convert them into tidy format.
+#' @param format Optional format for parsing timestamp data. If no format is specified two
+#'  pre-established timestamp formats are tried ut. See  \code{\link{parse.smtrx}} for details.
+#' @param tz String. Default \code{tz=NULL} will use system timezone (\code{Sys.timezone()}) and
+#'  assign to timestamp. Useful for explicitly setting other than system timezone for timestamp
+#'  data.
+#' @param cls Vector of class names. Default \code{cls=NULL} uses pre-defined sociometric
+#'  classes associated with the \code{type} abbreviation. However, class names can be specified
+#'  explicitly as well.
 #'
 #' @return Tibble with data in tidy format
 #'
@@ -74,8 +75,8 @@
 #'
 #' @export
 #'
-read_interaction <- function(file, type=c("IR", "BT", "IR_BT", "RIC", "NIC"), undirect=F,
-                             replv=F, delim="\t", format=NULL, cls=NULL, ...){
+read_interaction <- function(file, type, undirect=F,
+                             replv=F, delim="\t", format=NULL, tz=NULL, cls=NULL, ...){
 
   raw_df <- read_smtrx_file(file, type=type, delim=delim)
 
@@ -85,7 +86,7 @@ read_interaction <- function(file, type=c("IR", "BT", "IR_BT", "RIC", "NIC"), un
     class(raw_df) <- cls
   }
 
-  df <- parse(raw_df, format)
+  df <- parse(raw_df, format, tz)
 
   #anonymize Badge ID entries
   if (is.data.frame(replv)){
@@ -116,7 +117,8 @@ read_interaction <- function(file, type=c("IR", "BT", "IR_BT", "RIC", "NIC"), un
 #' @param type Indicates the type of audio data to be imported (see details for available
 #'  abbreviations).
 #' @param ses_info Logical. Extract and store session info from file path if available.
-#' @param na.rm Logical. Should NA be removed?
+#' @param na.rm Logical. Calls \code{na.omit} on the entire data frame after conversion to
+#'  tidy format.
 #'
 #' @details Volume, pitch and frequencies are avaible for the front- and back microphone which
 #'  can be indicated by the "_F" or "_B" suffix on each abbreviation. If no suffix is included for
@@ -145,12 +147,28 @@ read_interaction <- function(file, type=c("IR", "BT", "IR_BT", "RIC", "NIC"), un
 #'    \item{"VOL_MIR[_F|_B]" - Volume mirroring. \emph{Similar} indicates the similarity between volume
 #'     readings between two badges and ranges between 0 (no match) and 1 (perfect match) within the
 #'     given time interval. \emph{Lag} indicates the time lag between matches. }
-#'    \item{"VOL_CON[_F|_B]" - Volume consistency. }
-#'    \item{"FRQ_[_F|_B]" - Frequency bands. Contains three frequency bands hz_0, hz_1...hz_2 and
+#'    \item{"VOL_CON[_F|_B]" - Volume consistency of each badge’s front audio amplitude, as measured in
+#'     Activity (volume) (front). Consistency ranges from 0 to 1, where 1 indicates no changes in speech
+#'     amplitude, and 0 indicates the maximum amount of variation in speech amplitude.}
+#'    \item{"FRQ_[_F|_B]" - Dominant frequency. Contains three frequency bands hz_0, hz_1...hz_2 and
 #'     corresponding amplitude readings amp_0, ...amp_2. Converted to tidy format, the resulting
 #'     tibble contains the usual Timestamp, Badge.ID column followed by \emph{Band} column indicating
-#'     one of the three bands \emph{Band_0, ... Band_2}} and two further columns \emph{Hz} and \emph{Amplitude}
-#'    \item{"TT" - Turn taking sheet. }
+#'     one of the three bands \emph{Band_0, ... Band_2}} and two further columns \emph{Hz} and \emph{Amplitude}.
+#'     There are potentially 4 frequency bands shown, hz_0 & amp_0 is the strongest PEAK in cepstrum,
+#'     hz_1 & amp_1 is the second strongest PEAK, and so on. If there are fewer than k peaks in cepstrum,
+#'     the hz_k and larger values are empty. E.g if there are only two peaks in cepstrum, hz_2 and hz_3 are empty and not exported.
+#'    \item{"TT" - Turn taking sheet. \emph{Speaking Segment}: Any continuous, uninterrupted length of
+#'     speech made by a single person. \emph{Turns}: Turns are speaking segments that occur after and
+#'     within 10 seconds of, another speaking segment. By default a speech segment must be made within
+#'     10 seconds after the previous one ended in order to be considered a turn. \emph{Self-turn}: A
+#'     speaker starts speaking, pauses for greater than 0.5 seconds (but less than 10 seconds), and then
+#'     resumes speaking. \emph{Successful interruptions}: Person A is talking. Peron B starts talking over
+#'      A. If Person A talks for less than 5 out of the next 10 seconds, then Person B successfully
+#'      interrupted Person A. \emph{Unsuccessful interruptions}: Person A is talking. Peron B starts talking
+#'      over A. If Person A talks for more than 5 out of the next 10 seconds, then Person B successfully
+#'      interrupted Person A. \emph{Pause}: A pause is a period of time within which there is no speaking.
+#'      All pauses are between .5s and 10s.
+#'    }
 #'  }
 #'
 #'
@@ -160,9 +178,8 @@ read_interaction <- function(file, type=c("IR", "BT", "IR_BT", "RIC", "NIC"), un
 #'
 #' @export
 #'
-read_audio <- function(file, type=c("VOL", "PITCH", "SP", "PAR","VOL_MIR", "VOL_CON", "FRQ", "TT"),
-                       ses_info=F, replv=F, delim="\t",
-                       format = NULL, na.rm=F, cls=NULL, ...){
+read_audio <- function(file, type, ses_info=F, replv=F, delim="\t",
+                       format = NULL, tz=NULL, na.rm=F, cls=NULL, ...){
 
   raw_df <- NULL
 
@@ -179,7 +196,7 @@ read_audio <- function(file, type=c("VOL", "PITCH", "SP", "PAR","VOL_MIR", "VOL_
       abbrs <- load_strings(tt) #which sheets?
       for (abbr in abbrs){
         tmp <- read_smtrx_file(file, type=abbr, delim=delim, ...)
-        tmp$Type <- abbr
+        #tmp$Source <- abbr
 
         if (is.null(raw_df)){
           raw_df <- tmp
@@ -195,8 +212,6 @@ read_audio <- function(file, type=c("VOL", "PITCH", "SP", "PAR","VOL_MIR", "VOL_
 
   }
 
-  # print("before assign class in read_audio")
-  # print(class(raw_df[[1]]))
 
   if (is.null(cls)){
     class(raw_df) <- c(attr(raw_df, "pclass"), class(raw_df))
@@ -204,11 +219,12 @@ read_audio <- function(file, type=c("VOL", "PITCH", "SP", "PAR","VOL_MIR", "VOL_
     class(raw_df) <- cls
   }
 
-  df <- parse(raw_df, format)
+  df <- parse(raw_df, format, tz)
 
-  # print(class(df))
-  # print(names(df))
-
+  if (na.rm){
+    df <- na.omit(df)
+    class(df) <- class(raw_df)
+  }
 
   #anonymize Badge ID entries
   if (is.data.frame(replv)){
@@ -216,10 +232,6 @@ read_audio <- function(file, type=c("VOL", "PITCH", "SP", "PAR","VOL_MIR", "VOL_
 
   } else if (replv == T){
     df <- anonymize(df)
-  }
-
-  if (na.rm){
-    df <- na.omit(df)
   }
 
   df
@@ -233,29 +245,41 @@ read_audio <- function(file, type=c("VOL", "PITCH", "SP", "PAR","VOL_MIR", "VOL_
 #' @inheritParams read_interaction
 #' @param type Indicates the type of accelerometer data to be imported (see details for available
 #'  abbreviations).
+#' @param na.rm Logical. Calls \code{na.omit} on the entire data frame after conversion to
+#'  tidy format.
 #'
-#' @return Tibble
+#' @return Object of type "act", "smtrx"
 #'
 #' @details The following accelerometer data sheets can be read by setting the \code{type} parameter
 #'  to one of the following values:
 #'  \itemize{
-#'    \item{"BM" - Body movement activity. Values < 0.002 indicate very low activity; values between
+#'    \item{"BM" - Body movement activity. This is the absolute value of the first derivative of energy.
+#'     This provides a more reliable measure of someone’s activity, while eliminating the accelerometer’s
+#'     magnitude natural offset. Values < 0.002 indicate very low activity; values between
 #'     0.003 - 0.19 moderate amounts of activity and > 0.2 movements like walking.}
-#'    \item{"BM_RATE" - Body movement rate}
-#'    \item{"BM_CON" - Body movement consistency}
-#'    \item{"BM_MIR" - Body movement mirroring}
+#'    \item{"BM_ACC" - Body movement. Accelerometer’s energy magnitude over the 3 axes of measurement.}
+#'    \item{"BM_RATE" - Body movement rate. This is the second derivative of energy. The sign
+#'     (positive or negative) of Rate (BM) indicates the direction of the change in someone’s activity
+#'     levels, as measured by Activity (BM). A positive Rate (BM) indicates the person’s activity is
+#'     increasing. A negative Rate(BM) indicates the activity is decreasing.}
+#'    \item{"BM_CON" - Body movement consistency. Consistency ranges from 0 to 1, where 1 indicates no
+#'     changes in activity level, and 0 indicates the maximum amount of variation in activity levels.}
+#'    \item{"BM_MIR" - Body movement mirroring. Mirroring (BM) values indicate how similar one badge’s
+#'     Activity (BM) data series is to another badge’s Activity (BM) data series over time. The values
+#'     range from 0 to 1, where 0 indicates no similarity and 1 indicates the two data series are identical.}
 #'    \item{"POS" - Posture. Left-right / front-back.}
-#'    \item{"POS_ACT" - Posture activity}
-#'    \item{"POS_RATE"- Posture rate}
-#'    \item{"POS_MIR" - Posture mirroring}
+#'    \item{"POS_ACT" - Posture activity. Activity (Posture) shows the absolute angular velocity for
+#'     every badge at every timestamp. }
+#'    \item{"POS_RATE"- Posture rate. Rate (Posture) shows the angular acceleration for every badge at every timestamp.}
+#'    \item{"POS_MIR" - Posture mirroring. See "BM_MIR".}
 #' }
 #'
 #'
 #'
 #' @export
 #'
-read_body <- function(file, type=c("BM","BM_RATE","BM_CON","BM_MIR", "POS", "POS_ACT", "POS_RATE", "POS_MIR"), undirect=F,
-                      replv=F, delim="\t", format=NULL, cls=NULL, ...){
+read_body <- function(file, type, undirect=F,
+                      replv=F, delim="\t", format=NULL, tz=NULL, na.rm=F, cls=NULL, ...){
 
 
   raw_df <- read_smtrx_file(file, type=type, delim=delim)
@@ -266,9 +290,13 @@ read_body <- function(file, type=c("BM","BM_RATE","BM_CON","BM_MIR", "POS", "POS
     class(raw_df) <- cls
   }
 
-  #print(names(raw_df))
+  df <- parse(raw_df, format, tz)
 
-  df <- parse(raw_df, format=format)
+  if (na.rm){
+    df <- na.omit(df)
+    class(df) <- class(raw_df)
+  }
+
 
   #anonymize Badge ID entries
   if (is.data.frame(replv)){
@@ -278,7 +306,7 @@ read_body <- function(file, type=c("BM","BM_RATE","BM_CON","BM_MIR", "POS", "POS
     df <- anonymize(df)
   }
 
-  #add extra column of undirected edge list
+  #add extra column for undirected edge list
   if (undirect & type %in% c("BM_MIR", "POS_MIR")){
     df <- mreverse(df, into="Pairs")
   }
@@ -333,8 +361,7 @@ read_smtrx_file <- function(file, type, delim="\t",...){
 #'
 #' @description Sociometric DataLab exports several different data sheets with often
 #'  cumbersome names. The following function convert abbreviated shortcuts
-#'  to excel data sheets into actual sheet names and suggests the S3 class which
-#'  determines the corresponding parsing function.
+#'  to actual sheet names and suggests the S3 class which determines the corresponding parsing function.
 #'
 #' @param abbr String of abbreviated data types.
 #'
@@ -357,7 +384,7 @@ hash_source <- function(abbr=NULL){
   aabbr <- c("IR", "BT", "IR_BT", "RIC", "NIC",
              "VOL_F", "VOL_B", "PITCH_F", "PITCH_B", "PAR", "SP", "VOL_MIR_F", "VOL_MIR_B",
              "VOL_CON_F", "VOL_CON_B", "FRQ_F", "FRQ_B", "TT",
-             "BM", "BM_RATE", "BM_CON", "BM_MIR",
+             "BM", "BM_ACC", "BM_RATE", "BM_CON", "BM_MIR",
              "POS", "POS_ACT", "POS_RATE", "POS_MIR")
 
   if (is.null(abbr)){
@@ -395,7 +422,7 @@ hash_source <- function(abbr=NULL){
     return(list(sheet="t_speech_participation1", pclass=c("par", "ego", "smtrx")))
 
   } else if (abbr == "SP") {
-    return (list(sheet="t_speech_profile1", pclass=c("sp", "smtrx")))
+    return (list(sheet="t_speech_profile1", pclass=c("sp", "ego", "smtrx")))
 
   } else if (abbr == "VOL_MIR_F"){
     return(list(sheet="t_audio_front_vol_mirroring1", pclass=c("mirror")))
@@ -421,6 +448,9 @@ hash_source <- function(abbr=NULL){
   } else if (abbr == "BM") {
     return(list(sheet="t_BM_activity1", pclass=c("act", "ego", "smtrx")))
 
+  } else if (abbr == "BM_ACC") {
+    return(list(sheet="t_BM_bm1", pclass=c("act", "ego", "smtrx")))
+
   } else if (abbr == "BM_RATE") {
     return(list(sheet="t_BM_rate1", pclass=c("rate","ego", "smtrx")))
 
@@ -443,7 +473,7 @@ hash_source <- function(abbr=NULL){
     return(list(sheet="t_posture_mirroring1", pclass=c("mirror", "smtrx")))
 
   } else {
-    warning("Unknown sheet type ", abbr, ". Available abbreviations are: \n", paste(aabbr))
+    stop("Unknown sheet type '", abbr, "'. Available abbreviations are: \n", paste(aabbr, sep=", "))
     return(abbr)
   }
 

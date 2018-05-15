@@ -4,9 +4,8 @@
 \alias{read_audio}
 \title{Import audio data}
 \usage{
-read_audio(file, type = c("VOL", "PITCH", "SP", "PAR", "VOL_MIR", "VOL_CON",
-  "FRQ", "TT"), ses_info = F, replv = F, delim = "\\t", format = NULL,
-  na.rm = F, cls = NULL, ...)
+read_audio(file, type, ses_info = F, replv = F, delim = "\\t",
+  format = NULL, tz = NULL, na.rm = F, cls = NULL, ...)
 }
 \arguments{
 \item{file}{Path to source data file (xls, xlxs or csv).}
@@ -22,16 +21,19 @@ values: First column holds original values, second column replacement values.}
 
 \item{delim}{Single delimiter character for reading CSV data. Ignored for Excel files.}
 
-\item{format}{Format for parsing of timestamp data. Holds a series pre-established
-timestamp formats. See  \code{\link{parse.smtrx}} for details. Reading excel sheets recognizes
-date time objects. CSV files read character representations of dates which need the \code{format}
-specified.}
+\item{format}{Optional format for parsing timestamp data. If no format is specified two
+pre-established timestamp formats are tried ut. See  \code{\link{parse.smtrx}} for details.}
 
-\item{na.rm}{Logical. Should NA be removed?}
+\item{tz}{String. Default \code{tz=NULL} will use system timezone (\code{Sys.timezone()}) and
+assign to timestamp. Useful for explicitly setting other than system timezone for timestamp
+data.}
 
-\item{cls}{Character. Vector of class names. Default \code{cls=NULL} using pre-defined sociometric
-classes and subclass names. The class name indicates the corresponding parser to read data files
-and convert them into tidy format.}
+\item{na.rm}{Logical. Calls \code{na.omit} on the entire data frame after conversion to
+tidy format.}
+
+\item{cls}{Vector of class names. Default \code{cls=NULL} uses pre-defined sociometric
+classes associated with the \code{type} abbreviation. However, class names can be specified
+explicitly as well.}
 }
 \value{
 Tibble with data in tidy format
@@ -69,12 +71,28 @@ Volume, pitch and frequencies are avaible for the front- and back microphone whi
    \item{"VOL_MIR[_F|_B]" - Volume mirroring. \emph{Similar} indicates the similarity between volume
     readings between two badges and ranges between 0 (no match) and 1 (perfect match) within the
     given time interval. \emph{Lag} indicates the time lag between matches. }
-   \item{"VOL_CON[_F|_B]" - Volume consistency. }
-   \item{"FRQ_[_F|_B]" - Frequency bands. Contains three frequency bands hz_0, hz_1...hz_2 and
+   \item{"VOL_CON[_F|_B]" - Volume consistency of each badge’s front audio amplitude, as measured in
+    Activity (volume) (front). Consistency ranges from 0 to 1, where 1 indicates no changes in speech
+    amplitude, and 0 indicates the maximum amount of variation in speech amplitude.}
+   \item{"FRQ_[_F|_B]" - Dominant frequency. Contains three frequency bands hz_0, hz_1...hz_2 and
     corresponding amplitude readings amp_0, ...amp_2. Converted to tidy format, the resulting
     tibble contains the usual Timestamp, Badge.ID column followed by \emph{Band} column indicating
-    one of the three bands \emph{Band_0, ... Band_2}} and two further columns \emph{Hz} and \emph{Amplitude}
-   \item{"TT" - Turn taking sheet. }
+    one of the three bands \emph{Band_0, ... Band_2}} and two further columns \emph{Hz} and \emph{Amplitude}.
+    There are potentially 4 frequency bands shown, hz_0 & amp_0 is the strongest PEAK in cepstrum,
+    hz_1 & amp_1 is the second strongest PEAK, and so on. If there are fewer than k peaks in cepstrum,
+    the hz_k and larger values are empty. E.g if there are only two peaks in cepstrum, hz_2 and hz_3 are empty and not exported.
+   \item{"TT" - Turn taking sheet. \emph{Speaking Segment}: Any continuous, uninterrupted length of
+    speech made by a single person. \emph{Turns}: Turns are speaking segments that occur after and
+    within 10 seconds of, another speaking segment. By default a speech segment must be made within
+    10 seconds after the previous one ended in order to be considered a turn. \emph{Self-turn}: A
+    speaker starts speaking, pauses for greater than 0.5 seconds (but less than 10 seconds), and then
+    resumes speaking. \emph{Successful interruptions}: Person A is talking. Peron B starts talking over
+     A. If Person A talks for less than 5 out of the next 10 seconds, then Person B successfully
+     interrupted Person A. \emph{Unsuccessful interruptions}: Person A is talking. Peron B starts talking
+     over A. If Person A talks for more than 5 out of the next 10 seconds, then Person B successfully
+     interrupted Person A. \emph{Pause}: A pause is a period of time within which there is no speaking.
+     All pauses are between .5s and 10s.
+   }
  }
 }
 \seealso{

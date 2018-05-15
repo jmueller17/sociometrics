@@ -4,7 +4,8 @@
 \alias{parse.smtrx}
 \title{Parse timestamp data.}
 \usage{
-\method{parse}{smtrx}(raw_df, format = NULL, as_posixct = T, ts_col = 1)
+\method{parse}{smtrx}(raw_df, format = NULL, as_posixct = T, ts_col = 1,
+  tz = NULL)
 }
 \arguments{
 \item{raw_df}{Data frame as result of \code{read_*} functions. One column holds a character representation of timestamp values.}
@@ -21,6 +22,8 @@
 \item{as_posixct}{Logical. If resulting timestamp should be converted to POSIXct object.}
 
 \item{ts_col}{Index or name of colum that holds timestamp data.}
+
+\item{tz}{String. Specify timezone. Default \code{tz=NULL} will use \code{Syst.timezone()}}
 }
 \value{
 Original data frame with timestamp column converted to datetime object. Data frame

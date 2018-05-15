@@ -4,7 +4,7 @@
 \alias{parse}
 \title{Parse sociometric data sheets}
 \usage{
-parse(raw_df, format = NULL, as_posixct = T, ts_col = 1)
+parse(raw_df, format = NULL, as_posixct = T, ts_col = 1, tz = NULL)
 }
 \arguments{
 \item{raw_df}{Data frame usually returned by file read operations.}
@@ -12,6 +12,8 @@ parse(raw_df, format = NULL, as_posixct = T, ts_col = 1)
 \item{format}{String representation of timestamp format}
 
 \item{as_posixct}{Logical. Format timestamps as \code{POSIXct}}
+
+\item{tz}{String. Specify timezone. Default \code{tz=NULL} will use \code{Syst.timezone()}}
 }
 \value{
 Object.

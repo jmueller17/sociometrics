@@ -107,3 +107,12 @@ qexpl.vol <- function(x, title="", size=1, colour=NULL, alpha=1, leg.pos="none")
 }
 
 
+#' @export
+qexpl.act <- function(x, title="", size=1, colour=NULL, alpha=1, leg.pos="none"){
+
+  g <- NextMethod("qexpl", x, measure="Activity", title=title, size=size, colour=colour, alpha=alpha, leg.pos=leg.pos)
+
+  g
+}
+
+

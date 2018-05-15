@@ -3,12 +3,12 @@
 #'
 #' @description Eliminates directionality of value pairs. Largely a wrapper around
 #'  \code{\link{grp_reverse_pairs}} accepting single, double or multi-column data frame
-#'  inputs. Whereas \code{grp_reverse_pairs} generates list of unique reverse-value pairs,
-#'  \code{mreverse} then assigns these identifiers to all entries of the given
-#'  data frame.
+#'  inputs. \code{grp_reverse_pairs} generates a list of unique reverse-value pairs,
+#'  and \code{mreverse} assigns these identifiers to all entries of the given
+#'  data frame. This is useful to convert directed network edges into undirected ones.
 #'
 #' @param x Either single- or multi column data frame. In case of data frame containing more than
-#'  two columns, \code{cols} needs to identify either a single column (containing splittable
+#'  two columns, \code{cols} needs to identify either a single column (containing splitable
 #'  strings) or two columns that hold the value pair.
 #' @param cols Vector of column names (or index) if \code{x} has more than two columns.
 #' @param sep Single character for spliting single column string values
@@ -20,7 +20,7 @@
 #' @details A given list of directed dyads (e.g. "A-B", "B-A", "A-C", "C-A") is converted into
 #'  undirected dyads such that "A-B" and "B-A" are both represented as "A-B".
 #'
-#'  Accepts both, a single character column to be split (e.g. "Women-Men") or two
+#'  Accepts both, a single character column to be split (e.g. "Student-Teacher") or two
 #'  columns such as "Head", "Tail".
 #'
 #'  In case a single column is provided, needs to contain a string that can be split by
@@ -44,26 +44,21 @@
 #' @exportClass mreverse
 #'
 #' @export mreverse
-mreverse <- function(x, cols, into, sep, as_fct){
+mreverse <- function(x, cols, into, sep, as_fct=F){
   UseMethod("mreverse")
 }
 
-#' @export
-mreverse.default <- function(x, cols, into, sep, as_fct){
-  return(x)
-}
-
 
 #' @export
-mreverse.interact <- function(x, cols=c("Badge.ID", "Other.ID"),
-                                   into="Dyad", sep="-", as_fct=F){
+mreverse.default <- function(x, cols, into, sep, as_fct=F){
+
   cls <- class(x)
 
   #single column needs to be string
   if (length(cols)==1){
     pairs <- split_single_col(x[,cols])
 
-  #if only one column is given, the string needs to be split
+    #if only one column is given, the string needs to be split
   } else if (ncol(x) == 1) {
     pairs <- split_single_col(x)
 
@@ -92,12 +87,21 @@ mreverse.interact <- function(x, cols=c("Badge.ID", "Other.ID"),
 
   x[, into] <- pairs[,into]
 
-  NextMethod("mreverse")
-
   class(x) <- cls
 
   x
 }
+
+
+#' @export
+mreverse.interact <- function(x, cols=c("Badge.ID", "Other.ID"),
+                                   into="Dyad", sep="-", as_fct=F){
+
+  x <- NextMethod("mreverse", x, cols=cols, into=into, sep=sep, as_fct=as_fct)
+
+  x
+}
+
 
 
 #' @title Assigns shared identifier to reversed value pairs

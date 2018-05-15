@@ -4,9 +4,8 @@
 \alias{read_body}
 \title{Import accelerometer data}
 \usage{
-read_body(file, type = c("BM", "BM_RATE", "BM_CON", "BM_MIR", "POS",
-  "POS_ACT", "POS_RATE", "POS_MIR"), undirect = F, replv = F,
-  delim = "\\t", format = NULL, cls = NULL, ...)
+read_body(file, type, undirect = F, replv = F, delim = "\\t",
+  format = NULL, tz = NULL, na.rm = F, cls = NULL, ...)
 }
 \arguments{
 \item{file}{Path to source data file (xls, xlxs or csv).}
@@ -22,17 +21,22 @@ values: First column holds original values, second column replacement values.}
 
 \item{delim}{Single delimiter character for reading CSV data. Ignored for Excel files.}
 
-\item{format}{Format for parsing of timestamp data. Holds a series pre-established
-timestamp formats. See  \code{\link{parse.smtrx}} for details. Reading excel sheets recognizes
-date time objects. CSV files read character representations of dates which need the \code{format}
-specified.}
+\item{format}{Optional format for parsing timestamp data. If no format is specified two
+pre-established timestamp formats are tried ut. See  \code{\link{parse.smtrx}} for details.}
 
-\item{cls}{Character. Vector of class names. Default \code{cls=NULL} using pre-defined sociometric
-classes and subclass names. The class name indicates the corresponding parser to read data files
-and convert them into tidy format.}
+\item{tz}{String. Default \code{tz=NULL} will use system timezone (\code{Sys.timezone()}) and
+assign to timestamp. Useful for explicitly setting other than system timezone for timestamp
+data.}
+
+\item{na.rm}{Logical. Calls \code{na.omit} on the entire data frame after conversion to
+tidy format.}
+
+\item{cls}{Vector of class names. Default \code{cls=NULL} uses pre-defined sociometric
+classes associated with the \code{type} abbreviation. However, class names can be specified
+explicitly as well.}
 }
 \value{
-Tibble
+Object of type "act", "smtrx"
 }
 \description{
 
@@ -41,14 +45,24 @@ Tibble
 The following accelerometer data sheets can be read by setting the \code{type} parameter
  to one of the following values:
  \itemize{
-   \item{"BM" - Body movement activity. Values < 0.002 indicate very low activity; values between
+   \item{"BM" - Body movement activity. This is the absolute value of the first derivative of energy.
+    This provides a more reliable measure of someone’s activity, while eliminating the accelerometer’s
+    magnitude natural offset. Values < 0.002 indicate very low activity; values between
     0.003 - 0.19 moderate amounts of activity and > 0.2 movements like walking.}
-   \item{"BM_RATE" - Body movement rate}
-   \item{"BM_CON" - Body movement consistency}
-   \item{"BM_MIR" - Body movement mirroring}
+   \item{"BM_ACC" - Body movement. Accelerometer’s energy magnitude over the 3 axes of measurement.}
+   \item{"BM_RATE" - Body movement rate. This is the second derivative of energy. The sign
+    (positive or negative) of Rate (BM) indicates the direction of the change in someone’s activity
+    levels, as measured by Activity (BM). A positive Rate (BM) indicates the person’s activity is
+    increasing. A negative Rate(BM) indicates the activity is decreasing.}
+   \item{"BM_CON" - Body movement consistency. Consistency ranges from 0 to 1, where 1 indicates no
+    changes in activity level, and 0 indicates the maximum amount of variation in activity levels.}
+   \item{"BM_MIR" - Body movement mirroring. Mirroring (BM) values indicate how similar one badge’s
+    Activity (BM) data series is to another badge’s Activity (BM) data series over time. The values
+    range from 0 to 1, where 0 indicates no similarity and 1 indicates the two data series are identical.}
    \item{"POS" - Posture. Left-right / front-back.}
-   \item{"POS_ACT" - Posture activity}
-   \item{"POS_RATE"- Posture rate}
-   \item{"POS_MIR" - Posture mirroring}
+   \item{"POS_ACT" - Posture activity. Activity (Posture) shows the absolute angular velocity for
+    every badge at every timestamp. }
+   \item{"POS_RATE"- Posture rate. Rate (Posture) shows the angular acceleration for every badge at every timestamp.}
+   \item{"POS_MIR" - Posture mirroring. See "BM_MIR".}
 }
 }

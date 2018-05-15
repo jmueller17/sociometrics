@@ -2,21 +2,22 @@
 % Please edit documentation in R/utils.R
 \name{unique_dates}
 \alias{unique_dates}
-\title{Retrieve unique dates of dataset}
+\title{Retrieve unique days of dataset}
 \usage{
 unique_dates(x, ts_format = "\%Y-\%m-\%d")
 }
 \arguments{
 \item{x}{Data frame with column "Timestamp" or vector of timestamp data.}
 
-\item{ts_format}{String. Indicating the format of the specified date}
+\item{ts_format}{String. Indicating the format of the specified date. Default is
+specifies days: "\%Y-\%m-\%d"}
 }
 \value{
 String of unique day-dates.
 }
 \description{
-Convenient way to retrieve all unique dates - usually days - within data set.
- Retrieves the unique days ignoring hour, minute and sec information.
+Convenient way to retrieve all unique dates within data set. The default formating
+ of the date retrieves unique "days" (y-m-d), but other formats are possible (e.g. month or years).
 }
 \seealso{
 \code{\link{unique_ids}}

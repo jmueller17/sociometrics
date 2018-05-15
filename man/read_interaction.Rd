@@ -4,9 +4,8 @@
 \alias{read_interaction}
 \title{Import interaction data}
 \usage{
-read_interaction(file, type = c("IR", "BT", "IR_BT", "RIC", "NIC"),
-  undirect = F, replv = F, delim = "\\t", format = NULL, cls = NULL,
-  ...)
+read_interaction(file, type, undirect = F, replv = F, delim = "\\t",
+  format = NULL, tz = NULL, cls = NULL, ...)
 }
 \arguments{
 \item{file}{Path to source data file (xls, xlxs or csv).}
@@ -22,14 +21,16 @@ values: First column holds original values, second column replacement values.}
 
 \item{delim}{Single delimiter character for reading CSV data. Ignored for Excel files.}
 
-\item{format}{Format for parsing of timestamp data. Holds a series pre-established
-timestamp formats. See  \code{\link{parse.smtrx}} for details. Reading excel sheets recognizes
-date time objects. CSV files read character representations of dates which need the \code{format}
-specified.}
+\item{format}{Optional format for parsing timestamp data. If no format is specified two
+pre-established timestamp formats are tried ut. See  \code{\link{parse.smtrx}} for details.}
 
-\item{cls}{Character. Vector of class names. Default \code{cls=NULL} using pre-defined sociometric
-classes and subclass names. The class name indicates the corresponding parser to read data files
-and convert them into tidy format.}
+\item{tz}{String. Default \code{tz=NULL} will use system timezone (\code{Sys.timezone()}) and
+assign to timestamp. Useful for explicitly setting other than system timezone for timestamp
+data.}
+
+\item{cls}{Vector of class names. Default \code{cls=NULL} uses pre-defined sociometric
+classes associated with the \code{type} abbreviation. However, class names can be specified
+explicitly as well.}
 }
 \value{
 Tibble with data in tidy format

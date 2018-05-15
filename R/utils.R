@@ -1,10 +1,11 @@
-#' @title Retrieve unique dates of dataset
+#' @title Retrieve unique days of dataset
 #'
-#' @description Convenient way to retrieve all unique dates - usually days - within data set.
-#'  Retrieves the unique days ignoring hour, minute and sec information.
+#' @description Convenient way to retrieve all unique dates within data set. The default formating
+#'  of the date retrieves unique "days" (y-m-d), but other formats are possible (e.g. month or years).
 #'
 #' @param x Data frame with column "Timestamp" or vector of timestamp data.
-#' @param ts_format String. Indicating the format of the specified date
+#' @param ts_format String. Indicating the format of the specified date. Default is
+#'  specifies days: "\%Y-\%m-\%d"
 #'
 #' @return String of unique day-dates.
 #'
@@ -78,6 +79,72 @@ unique_ids <- function(x, cols=c("Badge.ID", "Other.ID"), decreasing=NULL){
   }
 
   ids
+}
+
+
+
+#' @title Cast to sociometrics
+#'
+#' @description Given a data frame, performs basic checks on availability of Timestamp data and
+#'  other common sociometric columns and attaches the corresponding classes to the object. The
+#'  \code{read_interaction, read_body, read_audio} functions attach the correct class format to
+#'  the dataframe. However, performing other functions on might erase this information which
+#'  then prevents the corresponding \code{qexpl()} or \code{anonymize} methods from working.
+#'
+#' @param x A data frame.
+#'
+#' @return The original object with corresponding class information attached.
+#'
+#' @export
+#'
+as_smtrx <- function(x){
+
+  cls <- class(x)
+
+  cols <- names(x)
+
+  if ("Timestamp" %in% cols){
+    cls <- c("smtrx", cls)
+  }
+
+  if ("Badge.ID" %in% cols & "Other.ID" %in% cols){
+    cls <- c("interact", cls)
+  }
+
+
+  if ("Pitch" %in% cols & "Volume" %in% cols) {
+    cls <- c("pitch", "ego", cls)
+
+  } else if ("Activity" %in% cols){
+    cls <- c("act", "ego", cls)
+
+  } else if ("Speaking" %in% cols & "Overlap" %in% cols & "Listening" %in% cols & "Silent" %in% cols){
+    cls <- c("sp", "ego", cls)
+
+  } else if ("Volume" %in% cols & !("Pitch" %in% cols)){
+    cls <- c("vol", "ego", cls)
+
+  } else if ("Participation" %in% cols){
+    cls <- c("par", "ego", cls)
+
+  } else if ("Consistency" %in% cols){
+    cls <- c("con", "ego", cls)
+
+  } else if ("Rate" %in% cols){
+    cls <- c("rate", "ego", cls)
+
+  } else if ("Similar" %in% cols & "Lag" %in% cols){
+    cls <- c("mirror", cls)
+
+  } else if ("Left_Right" %in% cols & "Front_Back" %in% cols){
+    cls <- c("pos", "ego", cls)
+
+  }
+
+  class(x) <- cls
+
+  x
+
 }
 
 

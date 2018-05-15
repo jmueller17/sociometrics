@@ -1,11 +1,14 @@
 #' @importFrom lubridate is.POSIXct
 #' @importFrom lubridate force_tz
-#' @importFrom stringr str_replace
+#'
+#' @import stringr
+#' @import tidyr
+#' @import dplyr
 #'
 #'
 
 #try to parse given date time string with list of provided formatting strings.
-probe_ts_format <- function(x, format=NULL){
+probe_ts_format <- function(x, format=NULL, tz=NULL){
 
   if (!is.null(format)){
     formats <- c(format)
@@ -17,9 +20,11 @@ probe_ts_format <- function(x, format=NULL){
 
   #add lubridate::guess_formats !!
 
+  tz <- ifelse(is.null(tz), Sys.timezone(), tz)
+
   for (frmt in formats){
     if (!is.na(strptime(x[1], format=frmt))){
-      x <- strptime(x, frmt, tz="CET")
+      x <- strptime(x, frmt, tz)
       break
     }
   }
@@ -39,15 +44,16 @@ probe_ts_format <- function(x, format=NULL){
 #' @param raw_df Data frame usually returned by file read operations.
 #' @param format String representation of timestamp format
 #' @param as_posixct Logical. Format timestamps as \code{POSIXct}
+#' @param tz String. Specify timezone. Default \code{tz=NULL} will use \code{Syst.timezone()}
 #'
 #' @return Object.
 #'
 #' @export
-parse <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
+parse <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
   UseMethod("parse")
 }
 
-parse.default <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
+parse.default <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
   #warning("No suitable method for object of class ", class(x))
   return(raw_df)
 }
@@ -76,25 +82,27 @@ parse.default <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
 #'
 #' @param as_posixct Logical. If resulting timestamp should be converted to POSIXct object.
 #' @param ts_col Index or name of colum that holds timestamp data.
+#' @param tz String. Specify timezone. Default \code{tz=NULL} will use \code{Syst.timezone()}
 #'
 #' @return Original data frame with timestamp column converted to datetime object. Data frame
 #'  has class "smtrx".
 #'
 #' @export
-parse.smtrx <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
+parse.smtrx <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
 
   cls <- class(raw_df)
 
-  #print(ts_col)
+  #check which col holds timestamp data by type and name.
 
   x <- raw_df[[ts_col]] #Timestamp data is usually in the first colum.
 
   #makes sure corresponding column is named correctly
   names(raw_df)[ts_col] <- c("Timestamp")
 
+  tz <- ifelse(is.null(tz), Sys.timezone(), tz)
 
   if (lubridate::is.POSIXct(x)){
-    raw_df$Timestamp <- lubridate::force_tz(raw_df$Timestamp, "CET")
+    raw_df$Timestamp <- lubridate::force_tz(raw_df$Timestamp, tz)
     return(raw_df)
   }
 
@@ -104,30 +112,27 @@ parse.smtrx <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
 
   #no format provided, try out a couple of common date formats
   if (is.null(format)){
-    x <- probe_ts_format(x)
+    x <- probe_ts_format(x, tz)
 
   } else if (is.na(format)){
-    x <- probe_ts_format(x)
+    x <- probe_ts_format(x, tz)
 
     #otherwise use provided format
   } else {
-    x <- strptime(x, format)
+    x <- strptime(x, format, tz)
   }
 
-
-  #POSIXct (necessary for tidyr::gather)
-  if (as_posixct)
-    x <- as.POSIXct(x, tz="CET")
-
   #check result
-  if (all(is.na(x))){
+  if (all(is.na(x)) | is.null(x)){
     warning("Parsing timestamp string '",tstmp,"' with format '",format,"' produces NULL. \n")
   }
 
-  raw_df[[ts_col]] <- x
+  #POSIXct (necessary for tidyr::gather)
+  if (as_posixct)
+    x <- as.POSIXct(x, tz)
 
-  # print("smtr before return")
-  # print(names(obj))
+
+  raw_df[[ts_col]] <- x
 
   class(raw_df) <- cls
 
@@ -146,27 +151,27 @@ parse.smtrx <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
 #' @return Data frame of class c("ego") of pattern c("Timestamp", "Badge.ID", "Measure","Source")
 #'
 #' @export
-parse.ego <- function(raw_df, format=NULL){
+parse.ego <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
 
   #passes raw_df to parent parse function and returns value
   #df<-raw_df via parent parse.
   df <- NextMethod("parse")
 
-  if ("pitch" %in% class(df)){
+  if ("pitch" %in% class(df) | "sp" %in% class(df)){
     return(df)
   }
 
-  df <- gather(df, Badge.ID, Measure, -Timestamp, -Source)
+  df <- tidyr::gather(df, Badge.ID, Measure, -Timestamp, -Source)
 
   if (is.character(df$Measure)){
-    df$Measure <- str_replace(df$Measure, ",", ".") #sometimes measures have ","
+    df$Measure <- stringr::str_replace(df$Measure, ",", ".") #sometimes measures have ","
     df$Measure <- as.numeric(df$Measure)
   }
 
   #remove "B-" prefix from Badge.ID values
   df$Badge.ID <- stringr::str_replace(df$Badge.ID, "B-", "")
 
-  df <- select(df, Timestamp, Badge.ID, Measure, Source)
+  df <- dplyr::select(df, Timestamp, Badge.ID, Measure, Source)
 
   class(df) <- class(raw_df)
 
@@ -187,7 +192,7 @@ parse.ego <- function(raw_df, format=NULL){
 # @return Data frame of class "interact"
 #
 # @export
-parse.interact <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
+parse.interact <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
 
   #passes raw_df to parent parse function and returns value
   #df<-raw_df via parent parse.
@@ -206,7 +211,7 @@ parse.interact <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
 
 
 #parse combined interactions duration list
-parse.ric <- function(raw_df, format=NULL, as_posixct=T, ts_col=c(3,4)){
+parse.ric <- function(raw_df, format=NULL, as_posixct=T, ts_col=c(3,4), tz=NULL){
 
   #parse start and end timestamp
   df <- NextMethod("parse", ts_col=3)
@@ -214,8 +219,8 @@ parse.ric <- function(raw_df, format=NULL, as_posixct=T, ts_col=c(3,4)){
 
   names(df) <- c("Badge.ID", "Other.ID", "Start", "End", "Source")
 
-  df$Badge.ID <- str_sub(df$Badge.ID, 3, 6)
-  df$Other.ID <- str_sub(df$Other.ID, 3, 6)
+  df$Badge.ID <- stringr::str_sub(df$Badge.ID, 3, 6)
+  df$Other.ID <- stringr::str_sub(df$Other.ID, 3, 6)
 
   df
 
@@ -238,7 +243,7 @@ parse.ric <- function(raw_df, format=NULL, as_posixct=T, ts_col=c(3,4)){
 # @return Data frame of class c("vol", "ego", "smtrx")
 #
 # @export
-parse.vol <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
+parse.vol <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
 
   #passes raw_df to parent parse function and returns value
   #df<-raw_df via parent parse.
@@ -261,22 +266,13 @@ parse.vol <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
 # @return Data frame with additional class of c("pitch", "ego", "smtrx")
 #
 # @export
-parse.pitch <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
-
-  #remove "ego" class from pitch, which screws up parsing.
-  # tmpcls <- class(raw_df)
-  #
-  # tmpcls <- tmpcls[which("ego" != tmpcls)]
-  #
-  # df <- raw_df
-  # class(df) <- tmpcls
-
+parse.pitch <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
 
   #passes raw_df to parent parse function and returns value
   #df<-raw_df via parent parse.
-  df <- NextMethod("parse", df)
+  df <- NextMethod("parse")
 
-  bids <- str_extract(names(df), "[0-9]{4}")
+  bids <- stringr::str_extract(names(df), "[0-9]{4}")
   bids <- bids[!is.na(bids)]
 
   #construct new colnames,
@@ -288,26 +284,35 @@ parse.pitch <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
     nnames <- c(nnames, namp, namv)
   }
 
-  names(df) <- nnames
+  names(df) <- c(nnames, "Source")
   df <- df[-1,]
 
   #split into two df
-  df.p <- df[,c(1, seq(2, ncol(df)-1, by=2))]
-  df.v <- df[,seq(1, ncol(df), by=2)]
+  df.p <- df[,c(1, seq(2, ncol(df)-1, by=2), ncol(df))]
+  df.v <- df[,c(seq(1, ncol(df), by=2), ncol(df))]
 
-  df.p <- gather(df.p, -Timestamp, key="Badge.ID", value="Pitch")
-  df.p$Badge.ID <- str_sub(df.p$Badge.ID, 1, 4)
+  df.p <- tidyr::gather(df.p, -Timestamp, -Source, key="Badge.ID", value="Pitch")
+  df.p$Badge.ID <- stringr::str_sub(df.p$Badge.ID, 1, 4)
 
-  df.v <- gather(df.v, -Timestamp, key="Badge.ID", value="Volume")
-  df.v$Badge.ID <- str_sub(df.v$Badge.ID, 1, 4)
+  df.v <- tidyr::gather(df.v, -Timestamp, -Source, key="Badge.ID", value="Volume") %>%
+    dplyr::select(-Source)
 
-  df.p <- left_join(df.p, df.v, by=c("Timestamp", "Badge.ID"))
+  df.v$Badge.ID <- stringr::str_sub(df.v$Badge.ID, 1, 4)
+
+  df.p <- dplyr::left_join(df.p, df.v, by=c("Timestamp", "Badge.ID"))
 
   df <- df.p
   rm(df.p, df.v)
 
-  df$Pitch <- as.numeric(df$Pitch)
-  df$Volume <- as.numeric(df$Volume)
+  suppressWarnings(
+    df$Pitch <- as.numeric(df$Pitch)
+  )
+  suppressWarnings(
+    df$Volume <- as.numeric(df$Volume)
+  )
+
+  #reorder columns
+  df <- dplyr::select(df, Timestamp, Badge.ID, Pitch, Volume, Source)
 
   class(df) <- class(raw_df)
 
@@ -325,7 +330,7 @@ parse.pitch <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
 # @param Data frame with the original excel formats
 #
 # @return Tibble with tidy data
-parse.sp <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
+parse.sp <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
 
   #passes raw_df to parent parse function and returns value
   #df<-raw_df via parent parse.
@@ -355,9 +360,13 @@ parse.sp <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
     dft <- bind_rows(dft, tmp)
   }
 
-  df <- mutate_all(dft, funs(as.numeric))
+  suppressWarnings(
+    df <- mutate_all(dft, funs(as.numeric))
+  )
   df$Badge.ID <- dft$Badge.ID
   df$Timestamp <- dft$Timestamp
+
+
 
   #get session id
   #if (ses_info) df$ses_info <- extract_session(file)
@@ -382,7 +391,7 @@ parse.sp <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
 
 
 #parse speech participation sheet
-parse.part <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
+parse.part <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
 
   #passes raw_df to parent parse function and returns value
   #df<-raw_df via parent parse.
@@ -398,7 +407,7 @@ parse.part <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
 
 
 #Mirroring
-parse.mirror <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
+parse.mirror <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
 
   #passes raw_df to parent parse function and returns value
   #df<-raw_df via parent parse.
@@ -457,7 +466,7 @@ parse.mirror <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
 
 
 #parse consistency sheet
-parse.con <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
+parse.con <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
 
   #passes raw_df to parent parse function and returns value
   #df<-raw_df via parent parse.
@@ -472,7 +481,7 @@ parse.con <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
 
 
 # Activity
-parse.act <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
+parse.act <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
 
   df <- NextMethod("parse")
 
@@ -489,7 +498,7 @@ parse.act <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
 }
 
 # Rate
-parse.rate <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
+parse.rate <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
 
   df <- NextMethod("parse")
 
@@ -503,7 +512,7 @@ parse.rate <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
 
 
 # Posture
-parse.pos <- function(raw_df, format=NULL, as_posixct=T, ts_col=1){
+parse.pos <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
 
   #passes raw_df to parent parse function and returns value
   #df<-raw_df via parent parse.
@@ -584,7 +593,7 @@ parse.tt <- function(raw_df, format=NULL, as_posixct=T){
 # @param Data frame with the original excel formats
 #
 # @return Tibble with tidy data
-parse.frq <- function(raw_df, format=NULL){
+parse.frq <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
 
   #passes raw_df to parent parse function and returns value
   #df<-raw_df via parent parse.

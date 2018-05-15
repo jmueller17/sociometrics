@@ -4,11 +4,11 @@
 \alias{mreverse}
 \title{Match reversed values}
 \usage{
-mreverse(x, cols, into, sep, as_fct)
+mreverse(x, cols, into, sep, as_fct = F)
 }
 \arguments{
 \item{x}{Either single- or multi column data frame. In case of data frame containing more than
-two columns, \code{cols} needs to identify either a single column (containing splittable
+two columns, \code{cols} needs to identify either a single column (containing splitable
 strings) or two columns that hold the value pair.}
 
 \item{cols}{Vector of column names (or index) if \code{x} has more than two columns.}
@@ -24,15 +24,15 @@ Original dataframe with additional column (specified by \code{into}) containing
 \description{
 Eliminates directionality of value pairs. Largely a wrapper around
  \code{\link{grp_reverse_pairs}} accepting single, double or multi-column data frame
- inputs. Whereas \code{grp_reverse_pairs} generates list of unique reverse-value pairs,
- \code{mreverse} then assigns these identifiers to all entries of the given
- data frame.
+ inputs. \code{grp_reverse_pairs} generates a list of unique reverse-value pairs,
+ and \code{mreverse} assigns these identifiers to all entries of the given
+ data frame. This is useful to convert directed network edges into undirected ones.
 }
 \details{
 A given list of directed dyads (e.g. "A-B", "B-A", "A-C", "C-A") is converted into
  undirected dyads such that "A-B" and "B-A" are both represented as "A-B".
 
- Accepts both, a single character column to be split (e.g. "Women-Men") or two
+ Accepts both, a single character column to be split (e.g. "Student-Teacher") or two
  columns such as "Head", "Tail".
 
  In case a single column is provided, needs to contain a string that can be split by
