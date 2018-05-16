@@ -86,7 +86,7 @@ read_interaction <- function(file, type, undirect=F,
     class(raw_df) <- cls
   }
 
-  df <- parse(raw_df, format, tz)
+  df <- parse(raw_df, format=format, tz=tz)
 
   #anonymize Badge ID entries
   if (is.data.frame(replv)){

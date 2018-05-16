@@ -112,24 +112,25 @@ parse.smtrx <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
 
   #no format provided, try out a couple of common date formats
   if (is.null(format)){
-    x <- probe_ts_format(x, tz)
+    x <- probe_ts_format(x, format, tz)
 
   } else if (is.na(format)){
-    x <- probe_ts_format(x, tz)
+    x <- probe_ts_format(x, format, tz)
 
     #otherwise use provided format
   } else {
     x <- strptime(x, format, tz)
   }
 
+
+  #POSIXct (necessary for tidyr::gather)
+  if (as_posixct)
+    x <- as.POSIXct(x, tz=tz)
+
   #check result
   if (all(is.na(x)) | is.null(x)){
     warning("Parsing timestamp string '",tstmp,"' with format '",format,"' produces NULL. \n")
   }
-
-  #POSIXct (necessary for tidyr::gather)
-  if (as_posixct)
-    x <- as.POSIXct(x, tz)
 
 
   raw_df[[ts_col]] <- x
