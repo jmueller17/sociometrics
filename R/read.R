@@ -219,7 +219,7 @@ read_audio <- function(file, type, ses_info=F, replv=F, delim="\t",
     class(raw_df) <- cls
   }
 
-  df <- parse(raw_df, format, tz)
+  df <- parse(raw_df, format=format, tz=tz)
 
   if (na.rm){
     df <- na.omit(df)
@@ -290,7 +290,7 @@ read_body <- function(file, type, undirect=F,
     class(raw_df) <- cls
   }
 
-  df <- parse(raw_df, format, tz)
+  df <- parse(raw_df, format=format, tz=tz)
 
   if (na.rm){
     df <- na.omit(df)
