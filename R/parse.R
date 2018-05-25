@@ -564,19 +564,19 @@ parse.pos <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
 }
 
 
-#turn taking sheet
-parse.tt <- function(raw_df, format=NULL, as_posixct=T){
+# turn taking sheet
+parse.tt <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
 
   df <- NextMethod("parse")
 
-  #df$SessionID <- extract.sessionID(filepath)
-  # df$SessionID <- regmatches(filepath, regexpr("S[0-9]+", filepath))
-  # df$SessionID <- substr(df$SessionID, 2, nchar(df$SessionID))
-  # df$SessionID <- as.numeric(df$SessionID)
-  #df$fileName <- basename(filepath)
+  #df <- select(df, c(13,1:7,11,12,14))
+  names(df) <- c("Badge.ID", "Turns", "TurnsBadge", "TurnsAfter","SelfTurns",
+                 "SpeakSeg", "SilentSeg", "TurnsSec", "AvgSpeakLength", "AvgSilentLength",
+                 "Interrupt_Success", "Interrupt_Fail", "Source")
 
-  df <- select(df, c(13,1:7,11,12,14))
-  names(df) <- c("SessionID", "Badge", "TotalTurns", "Turns", "TurnsAfter","SelfTurns","SpeakSeg", "SilentSeg", "Interrupt_Success", "Interrupt_Fail", "File")
+  #remove "B-XXXX" from badge name
+  df$Badge.ID <- stringr::str_sub(df$Badge.ID, 3, 7)
+
 
   class(df) <- class(raw_df)
 

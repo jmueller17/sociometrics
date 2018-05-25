@@ -148,5 +148,48 @@ as_smtrx <- function(x){
 }
 
 
+#' @title Multiple file reads
+#'
+#' @description Utility function for reading multiple files. Allows to extract part of a file name through the
+#' provided regular expression. This allows to add additional information when reading several sociometric
+#' export files and combining them into a single data frame. An additional column will be added
+#' containing information about each original source file.
+#'
+#' @param readfn Read function for sociometric files. @seealso \code{read_interaction},
+#'  \code{read_audio}, or \code{read_body}.
+#' @param files List of absolute file paths to be read. Usually produced by \code{list.files}
+#' @param pattern. Regular expression pattern for extracting part of the file name.
+#'  Extracted fragment will be stored in extra data frame column "ses_info".
+#'
+#' @return Tibble
+#'
+#' @export
+#'
+mread <- function(readfn, files, pattern, ...){
+
+  df <- NULL
+
+  for (file in files){
+    tmp <- readfn(file, ...)
+
+    ses_info <- regmatches(file, regexpr(pattern, file))
+    ses_info <- substr(ses_info, 2, nchar(ses_info))
+
+    tmp$ses_info <- ses_info
+    tmp$SourceFile <- basename(file)
+
+    if (is.null(df)){
+      df <- tmp
+    } else {
+      df <- rbind(df, tmp)
+    }
+
+  }
+
+  df
+
+}
+
+
 
 
