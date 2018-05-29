@@ -158,7 +158,8 @@ parse.ego <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
   #df<-raw_df via parent parse.
   df <- NextMethod("parse")
 
-  if ("pitch" %in% class(df) | "sp" %in% class(df)){
+  #although data frames are of type "ego", they do not need to be parsed
+  if ("pitch" %in% class(df) | "sp" %in% class(df) | "frq" %in% class(df)){
     return(df)
   }
 
@@ -599,7 +600,6 @@ parse.frq <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
   #passes raw_df to parent parse function and returns value
   #df<-raw_df via parent parse.
   df <- NextMethod("parse")
-
 
   #get all badge ids from automatic assigned colnames
   bids <- str_extract(names(df), "[0-9]{4}")
