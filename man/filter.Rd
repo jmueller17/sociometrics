@@ -33,14 +33,17 @@ Original object of class sociometrics.
 }
 \description{
 Utility wrapper around \code{dplyr::filter} to easily extract rows per "days" and/or
- a list of badge ids. Filtering rows per single days requires conversion of timestamp data to single
+ a list of badge ids.
+
+ Filtering rows per single days requires conversion of timestamp data to single
  day datum; similar, for interaction data, filtering for a list of badges requires scanning both
  Badge.ID and Other.ID columns. Using the ellipsis operator \code{...} other filter conditions
  will be passed on to \code{dplyr::filter}.
+
  NOTE: the type of arguments accepted by this function combines normal parameter assignments such
  as for example \code{filter( ids=c("34") )} with dplyr conditionals that evaluate to logical
- TRUE or FALSE \code{filter(Timestamp > "2018-12-12 23:23:23") }. Overall, this \code{filter()}
- function only accepts three additional parameters, as follows:
+ TRUE or FALSE \code{filter(Timestamp > "2018-12-12 23:23:23")}. Overall, \code{sociometrics::filter()}
+ accepts three additional parameters: \code{days}, \code{ids}, and \code{ids.strict} (see parameters).
 }
 \section{Methods (by class)}{
 \itemize{

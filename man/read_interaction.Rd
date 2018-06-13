@@ -39,6 +39,9 @@ Tibble with data in tidy format
 Read CSV, XLS or XLSX files from Sociometrics that contain Infrared-, Bluetooth- or both data types.
 }
 \details{
+Excel file reading is performed by \code{\link{readxl::read_excel}} function. Column type
+specification might be required at times with the \code{col_type} parameter, passed via the "..."
+
 The following data sheets can be specified by setting the appropriate \code{type}
  parameter:
 

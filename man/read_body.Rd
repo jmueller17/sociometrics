@@ -42,7 +42,10 @@ Object of type "act", "smtrx"
 
 }
 \details{
-The following accelerometer data sheets can be read by setting the \code{type} parameter
+Excel file reading is performed by \code{\link{readxl::read_excel}} function. Column type
+ specification might be required at times with the \code{col_type} parameter, passed via the "..."
+
+ The following accelerometer data sheets can be read by setting the \code{type} parameter
  to one of the following values:
  \itemize{
    \item{"BM" - Body movement activity. This is the absolute value of the first derivative of energy.

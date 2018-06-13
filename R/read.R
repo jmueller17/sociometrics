@@ -31,7 +31,10 @@
 #'
 #' @return Tibble with data in tidy format
 #'
-#' @details The following data sheets can be specified by setting the appropriate \code{type}
+#' @details Excel file reading is performed by \code{\link{readxl::read_excel}} function. Column type
+#' specification might be required at times with the \code{col_type} parameter, passed via the "..."
+#'
+#' The following data sheets can be specified by setting the appropriate \code{type}
 #'  parameter:
 #'
 #'  \itemize{
@@ -78,7 +81,7 @@
 read_interaction <- function(file, type, undirect=F,
                              replv=F, delim="\t", format=NULL, tz=NULL, cls=NULL, ...){
 
-  raw_df <- read_smtrx_file(file, type=type, delim=delim)
+  raw_df <- read_smtrx_file(file, type=type, delim=delim, ...)
 
   if (is.null(cls)){
     class(raw_df) <- c(attr(raw_df, "pclass"), class(raw_df))
@@ -120,7 +123,10 @@ read_interaction <- function(file, type, undirect=F,
 #' @param na.rm Logical. Calls \code{na.omit} on the entire data frame after conversion to
 #'  tidy format.
 #'
-#' @details Volume, pitch and frequencies are avaible for the front- and back microphone which
+#' @details Excel file reading is performed by \code{\link{readxl::read_excel}} function. Column type
+#'  specification might be required at times with the \code{col_type} parameter, passed via the "..."
+#'
+#' Volume, pitch and frequencies are avaible for the front- and back microphone which
 #'  can be indicated by the "_F" or "_B" suffix on each abbreviation. If no suffix is included for
 #'  both microphone data sheets (back + front) will be loaded. The following abbreviations are
 #'  available for the \code{type} parameter:
@@ -250,7 +256,10 @@ read_audio <- function(file, type, ses_info=F, replv=F, delim="\t",
 #'
 #' @return Object of type "act", "smtrx"
 #'
-#' @details The following accelerometer data sheets can be read by setting the \code{type} parameter
+#' @details Excel file reading is performed by \code{\link{readxl::read_excel}} function. Column type
+#'  specification might be required at times with the \code{col_type} parameter, passed via the "..."
+#'
+#'  The following accelerometer data sheets can be read by setting the \code{type} parameter
 #'  to one of the following values:
 #'  \itemize{
 #'    \item{"BM" - Body movement activity. This is the absolute value of the first derivative of energy.
@@ -282,7 +291,7 @@ read_body <- function(file, type, undirect=F,
                       replv=F, delim="\t", format=NULL, tz=NULL, na.rm=F, cls=NULL, ...){
 
 
-  raw_df <- read_smtrx_file(file, type=type, delim=delim)
+  raw_df <- read_smtrx_file(file, type=type, delim=delim, ...)
 
   if (is.null(cls)){
     class(raw_df) <- c(attr(raw_df, "pclass"), class(raw_df))

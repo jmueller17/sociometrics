@@ -44,6 +44,9 @@ Read audio CSV, XLS or XLSX files from Sociometrics. Original Excel sheets have
  This strucutre will be converted into a tidy data format.
 }
 \details{
+Excel file reading is performed by \code{\link{readxl::read_excel}} function. Column type
+ specification might be required at times with the \code{col_type} parameter, passed via the "..."
+
 Volume, pitch and frequencies are avaible for the front- and back microphone which
  can be indicated by the "_F" or "_B" suffix on each abbreviation. If no suffix is included for
  both microphone data sheets (back + front) will be loaded. The following abbreviations are
