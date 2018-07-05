@@ -1,3 +1,4 @@
+#' @importFrom sjmisc dicho
 #'
 #' @title Convert covariate factors to logical vector
 #'
@@ -361,9 +362,9 @@ get_rr <- function(rr_x, dich.by=NULL, ids=NULL, weights=NULL, df.attrs=NULL, na
   if (!is.null(na.replace)){
 
     if (na.replace == "zero"){
-      snet <- sjmisc::replace_na(snet, value=0)
-      anet <- sjmisc::replace_na(anet, value=0)
-      enet <- sjmisc::replace_na(enet, value=0)
+      snet <- tidyr::replace_na(snet, 0)
+      anet <- tidyr::replace_na(anet, 0)
+      enet <- tidyr::replace_na(enet, 0)
 
       #replace NA values in matrix with mean column values
     } else if (na.replace == "mean"){

@@ -23,6 +23,7 @@ Imports:
   readxl, 
   stringr, 
   lubridate,
+  sjmisc,
 License: GPL-3 | file LICENSE
 URL: http://www.gedii.eu
 BugReports: https://github.com/jmueller17/sociometrics/issues
