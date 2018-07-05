@@ -42,7 +42,7 @@ Object of type "act", "smtrx"
 
 }
 \details{
-Excel file reading is performed by \code{\link{readxl::read_excel}} function. Column type
+Excel file reading is performed by \code{readxl::read_excel} function. Column type
  specification might be required at times with the \code{col_type} parameter, passed via the "..."
 
  The following accelerometer data sheets can be read by setting the \code{type} parameter

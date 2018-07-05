@@ -31,7 +31,7 @@
 #'
 #' @return Tibble with data in tidy format
 #'
-#' @details Excel file reading is performed by \code{\link{readxl::read_excel}} function. Column type
+#' @details Excel file reading is performed by \code{readxl::read_excel} function. Column type
 #' specification might be required at times with the \code{col_type} parameter, passed via the "..."
 #'
 #' The following data sheets can be specified by setting the appropriate \code{type}
@@ -123,7 +123,7 @@ read_interaction <- function(file, type, undirect=F,
 #' @param na.rm Logical. Calls \code{na.omit} on the entire data frame after conversion to
 #'  tidy format.
 #'
-#' @details Excel file reading is performed by \code{\link{readxl::read_excel}} function. Column type
+#' @details Excel file reading is performed by \code{readxl::read_excel} function. Column type
 #'  specification might be required at times with the \code{col_type} parameter, passed via the "..."
 #'
 #' Volume, pitch and frequencies are avaible for the front- and back microphone which
@@ -256,7 +256,7 @@ read_audio <- function(file, type, ses_info=F, replv=F, delim="\t",
 #'
 #' @return Object of type "act", "smtrx"
 #'
-#' @details Excel file reading is performed by \code{\link{readxl::read_excel}} function. Column type
+#' @details Excel file reading is performed by \code{readxl::read_excel} function. Column type
 #'  specification might be required at times with the \code{col_type} parameter, passed via the "..."
 #'
 #'  The following accelerometer data sheets can be read by setting the \code{type} parameter

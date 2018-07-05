@@ -63,7 +63,7 @@ anonymize.default <- function(x, ids=NULL, replv=NULL, cols=NULL, decreasing=F){
 
   #generate list of ids to be anonymized
   if (is.null(ids)){
-    ids <- unique_ids(x, cols, decreasing=decreasing)
+    ids <- unique_ids(x=x, cols=cols, decreasing=decreasing)
   }
 
 

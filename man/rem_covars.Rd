@@ -19,11 +19,11 @@ row index; otherwise extra column with ids has to be specified in param \code{id
 \item{covar_v}{Vector of length two. First entry specifies name of attribute to retrieve.
 This has to correspond to the column name in df_covars. Second entry specifies reference value set
 to \code{TRUE}. If only first entry is provided original attribute values are
-returned and not a logical vector.}
+returned and not a logical vector. Returns logical *vector*}
 
 \item{covar_m}{Vector of length two. First entry specifies name of the attribute to
 retrieve. Second entry specifies difference function, usually either "==" for binary values
-like gender or "-" difference for numeric values. Returns n x n matrix of difference between
+like gender or "-|+" difference for numeric values. Returns n x n *matrix* of difference between
 data attributes.}
 
 \item{covar_t}{String. Either of c("attr" | "co.loc" | "rr"). Indicating type of covariate data.

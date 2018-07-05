@@ -1,3 +1,4 @@
+#'
 #' @title Convert covariate factors to logical vector
 #'
 #' @description Converts a factor (or character) vector into a logical vector (or matrix)
@@ -17,10 +18,10 @@
 #' @param covar_v Vector of length two. First entry specifies name of attribute to retrieve.
 #'  This has to correspond to the column name in df_covars. Second entry specifies reference value set
 #'  to \code{TRUE}. If only first entry is provided original attribute values are
-#'  returned and not a logical vector.
+#'  returned and not a logical vector. Returns logical *vector*
 #' @param covar_m Vector of length two. First entry specifies name of the attribute to
 #'  retrieve. Second entry specifies difference function, usually either "==" for binary values
-#'  like gender or "-" difference for numeric values. Returns n x n matrix of difference between
+#'  like gender or "-|+" difference for numeric values. Returns n x n *matrix* of difference between
 #'  data attributes.
 #' @param covar_t String. Either of c("attr" | "co.loc" | "rr"). Indicating type of covariate data.
 #'  Usually this is either a vector or a matrix of data attributes. However, there are further two
@@ -125,7 +126,7 @@ rem_covars <- function(df_covars, ids=NULL, covar_v=NULL,
   #create a difference matrix. Does not preserve RID values but numbers 1...n
   if (!is.null(covar_m) & is.data.frame(df_covars) & covar_t=="attr"){
     #extract attribute vector from data frame
-    v <- ( df_covars[,covar_m[1]] )
+    v <- (df_covars[,covar_m[1]] )
 
     #simplify it. outer() does not work with tibble
     v <- v[[covar_m[1]]]
@@ -164,10 +165,10 @@ rem_covars <- function(df_covars, ids=NULL, covar_v=NULL,
 
   }
 
-  #retieve round roubin format.
+  #retieve round robin format.
   if (covar_t == "rr" & is.matrix(df_covars)){
 
-    v <- graph_from_round_robin(df_covars, ids=ids,...)
+    v <- get_rr(df_covars, ids=ids,...)
 
   }
 
@@ -199,13 +200,13 @@ rem_covars <- function(df_covars, ids=NULL, covar_v=NULL,
 #' corresponding edges.
 #'
 #' @export
-rem_edge_list <- function(df, rm_sup=T, replv=T, use_seq=F){
+rem_edge_list <- function(df, rm_sup=T, replv=T, use_seq=F, ...){
 
   #renumber badges since IDs need to start with 1..n
   #this needs to be in increasing order unless the order of the covariate vector differs in its
   #ordering.
   if(replv){
-    df <- anonymize(df, ids=NULL, replv=NULL, decreasing=F)
+    df <- anonymize(df, ids=NULL, replv=NULL, decreasing=F, ...)
   }
 
   #remove duplicates or "near" duplicates
@@ -277,3 +278,121 @@ vertex_attr_to_matrix <- function(igraph, attr_name){
 
   m
 }
+
+
+get_rr <- function(rr_x, dich.by=NULL, ids=NULL, weights=NULL, df.attrs=NULL, na.replace=NULL, ...){
+
+  if (!is.null(dich.by) & !is.null(weights)){
+    warning("\nAttempt to dichotomize and filter edges of networks matrix at the same time!")
+  }
+
+  #extract social, advice, and ease matrix. rr_csx[[teamID]] contains all three matrix in one
+  #where bound by columns, i.e. horizontally one after the other.
+  df <- as.data.frame(rr_x)
+  snet <- select(df, contains("social"))
+  anet <- select(df, contains("advice"))
+  enet <- select(df, contains("ease"))
+
+  #make row and column names equal. Column names have format "advice_RID"; Since we have the
+  #three matrix separated, each column name only contains the RID now.
+  row.names(snet) <- df$RID
+  row.names(anet) <- df$RID
+  row.names(enet) <- df$RID
+
+  names(snet) <- df$RID
+  names(anet) <- df$RID
+  names(enet) <- df$RID
+
+
+  #if a vector of RID/ids have been provided, we subset the matrix.
+  #This is useful for constructing REM covariate matrix
+  if (!is.null(ids) & length(ids) > 0) {
+
+    #make sure that listing of badges is ordered
+    ids <- sort(ids, decreasing=F)
+
+    #convert to character since number of matrix (dimnames) does not necessarily start at 1.
+    ids <- as.character(ids)
+
+    #only retain those cols/rows that are specified in used ids
+    snet <- snet[ids,ids]
+    anet <- anet[ids,ids]
+    enet <- enet[ids,ids]
+
+  }
+
+
+  #d <- dim(v)
+  #change col/row names to start from 1..n, although does not make a difference for rem()
+  #dimnames(v) <- list(c(1:d[1]), c(1:d[2]))
+
+
+  #dichotomize matrix if desired
+  if (!is.null(dich.by)) {
+    if (dich.by[1]>0){
+      snet <-  sjmisc::dicho(snet, dich.by=dich.by[1], as.num=T, suffix=NULL, append=F)
+    }
+
+    if (dich.by[2]>0){
+      anet <- sjmisc::dicho(anet, dich.by=dich.by[2], as.num=T, suffix=NULL, append=F)
+    }
+
+    if (dich.by[3]>0){
+      enet <- sjmisc::dicho(enet, dich.by=dich.by[3], as.num=T, suffix=NULL, append=F)
+    }
+  }
+
+  #remove edges (set to 0) that do not match the weights value. Useful for retrieving
+  #exclusive matrix of a certain score.
+  if (!is.null(weights)){
+    snet[snet!=weights[1]] <- 0
+    anet[anet!=weights[2]] <- 0
+    enet[enet!=weights[3]] <- 0
+  }
+
+
+  #convert to matrix
+  snet <- as.matrix(snet)
+  anet <- as.matrix(anet)
+  enet <- as.matrix(enet)
+
+
+  #how should NA values be treated?
+  if (!is.null(na.replace)){
+
+    if (na.replace == "zero"){
+      snet <- sjmisc::replace_na(snet, value=0)
+      anet <- sjmisc::replace_na(anet, value=0)
+      enet <- sjmisc::replace_na(enet, value=0)
+
+      #replace NA values in matrix with mean column values
+    } else if (na.replace == "mean"){
+
+      #replace NA values by column mean
+      snet <- apply(snet, 2, function(col){
+        col[is.na(col)] <- mean(col, na.rm=TRUE)
+        round(col,0)
+      })
+
+      anet <- apply(anet, 2, function(col){
+        col[is.na(col)] <- mean(col, na.rm=TRUE)
+        round(col,0)
+      })
+
+      enet <- apply(enet, 2, function(col){
+        col[is.na(col)] <- mean(col, na.rm=TRUE)
+        round(col,0)
+      })
+
+      #set the diagonal to 0. Self-ratings are not possible and shoud be get the mean value
+      diag(snet) <- 0
+      diag(anet) <- 0
+      diag(enet) <- 0
+
+    }
+
+  }
+
+  list(m_soc=snet,m_adv=anet,m_eas=enet)
+}
+

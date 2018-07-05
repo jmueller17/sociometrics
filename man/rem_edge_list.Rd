@@ -4,7 +4,7 @@
 \alias{rem_edge_list}
 \title{Format timestamped edge list for REM}
 \usage{
-rem_edge_list(df, rm_sup = T, replv = T, use_seq = F)
+rem_edge_list(df, rm_sup = T, replv = T, use_seq = F, ...)
 }
 \arguments{
 \item{df}{The sociometric dataframe, containing at least the Timestamp, Badge.ID, Other.ID columns}
