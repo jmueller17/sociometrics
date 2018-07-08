@@ -26,13 +26,14 @@
 #'  data attributes.
 #' @param covar_t String. Either of c("attr" | "co.loc" | "rr"). Indicating type of covariate data.
 #'  Usually this is either a vector or a matrix of data attributes. However, there are further two
-#'  special types, namely the colocation matrix (covar_t="co.loc") and the round robin formats (covar_t="rr").
-#'  Default value is "attr".
+#'  special types, namely the colocation matrix (covar_t="co.loc") and the round robin formats
+#'  (covar_t="rr"). Default value is "attr".
 #' @param intercept Logical. If TRUE, returns logical/matrix with all entries set to T.
 #' @param idcol Name or index of the column which should be used to filter for \code{ids}. Default
 #'  is \code{NULL} meaning that provided \code{ids} correspond to the row index.
 #'
-#' @return either logical vector or data matrix for given attribute containing difference between two node values.
+#' @return either logical vector or data matrix for given attribute containing difference between two
+#'  node values.
 #'
 #' @details The order of the values for the covariate vector will be identical to the order in the
 #'  df_covar dataframe. It is important that the IDs of the nodes has an ascending order since
@@ -47,14 +48,14 @@
 #' @examples
 #'
 #' #Retrieve a numeric vector of the column "Tenure" in dataframe df.attr for badge ids 2,5,7,9
-#' tenure <- remcovars(df.attr, ids=c(2,5,7,9), covar_v=c("Tenure"))
+#' tenure <- rem_covars(df.attr, ids=c(2,5,7,9), covar_v=c("Tenure"))
 #'
 #' #Retrieve a logical vector of "Role" Column, now with "Team leader" as reference category and set to TRUE
-#' isLeader <-  remcovars(df.attr, ids=ub, covar_v=c("Role", "Team leader"))
+#' isLeader <-  rem_covars(df.attr, ids=ub, covar_v=c("Role", "Team leader"))
 #'
 #' #Retrieve a n x n matrix of Gender (where n depends on the length of badge IDs in "ub") of "Gender", indicating
 #' #TRUE if two badges have the same "Gender" or FALSE otherwise.
-#' sameSex <- remcovars(df.attr, ids=ub, covar_m=c("Gender", "=="))
+#' sameSex <- rem_covars(df.attr, ids=ub, covar_m=c("Gender", "=="))
 #'
 #' #Retrieve the three round robin matrix for given badges, where NAs are replaced by column mean.
 #' remcovars(rr_csx[[team]], ids=ub, na.replace="mean", covar_t="rr")
@@ -74,7 +75,7 @@ rem_covars <- function(df_covars, ids=NULL, covar_v=NULL,
       #badge ids can be bigger than the actual rows in the covar data frame. In this case
       #an extra column with row ids needs to be provided
       if (max(ids) > nrow(df_covars)){
-        stop("\nRow index out of bounds: ids max value > than number of rows in data frame.")
+        stop("\nRow index out of bounds. Try specifying 'idcol' column to match provided ids!")
       }
 
       df_covars <- df_covars[which(rownames(df_covars) %in% ids ),]
@@ -193,7 +194,8 @@ rem_covars <- function(df_covars, ids=NULL, covar_v=NULL,
 #' with \code{rem_covars} has the same ascending order.
 #'
 #' @param df The sociometric dataframe, containing at least the Timestamp, Badge.ID, Other.ID columns
-#' @param rm_sup Logical. Remove duplicated values from proximity/face-to-face data frame where timestamps are identical
+#' @param rm_sup Logical. Remove duplicated values from proximity/face-to-face data frame where timestamps
+#'  are identical
 #' @param replv Logical. Make sure that badge ids in dataframe start at 1...ns
 #' @param use_seq Logical. If Other.ID is missing, simulate Other.ID with Badge.ID of next row
 #'
@@ -255,6 +257,152 @@ rem_edge_list <- function(df, rm_sup=T, replv=T, use_seq=F, ...){
 }
 
 
+
+
+#' @title Format edge list for DyNAM
+#'
+#' @description Convert a dyadic event list into an edge list to be used with the goldfish package
+#'  (DyNAM) model. The input data contains sender and receiver and is timestamped. The DyNAM model
+#'  requires certain naming conventions and data type formats, to be delivered by this function.
+#'
+#' @param x Dyadic data. Accepted formas are "matrix" (adjacency), "network" or "edgelist" objects
+#' (sna package), "interact" data frame.
+#' @param vprefix String prefix for labeling vertices. This is useful in relation to matrix where col
+#'  or row names might be just numbers while vertices are names.
+#' @param vpostfix String postfix for labeling vertices.
+#' @param use.lables Logical. In case a network/edgelist object is used, indicates ifthe associated
+#' vertice names should be copied or not.
+#'
+#' @return Object of type data.frame to be used with the DyNAM model.
+#'
+#' @examples
+#' #Construct DyNAM edge list from "advice" network matrix
+#' adv <- matrix(c(0,0,1, 1,0,0, 1,1,1), nrow=3, ncol=3)
+#'
+#' #without names
+#' dynam_event_dyad(adv)
+#'
+#' #with node prefix
+#' dynam_event_dyad(adv, vprefix="Node_")
+#'
+#' @export
+dynam_event_dyad <- function(x, vprefix=NULL, vpostfix=NULL, use.labels=F, ...){
+
+  el <- NULL
+  gfish_el <- NULL
+
+  #convert from adjacency
+  if (class(x) == "matrix"){
+
+    if (sum(x, na.rm=T) == 0){
+      warning("\nNo edges in adjacency matrix!")
+      return(NULL)
+    }
+
+    net <- network::network(x, matrix.type="adjacency", ...)
+    el <- network::as.edgelist(net)
+
+  } else if (class(x) == "network"){
+    el <- network::as.edgelist(x)
+
+  } else if (class(x) == "edgelist"){
+    el <- x
+
+    # should be smtrx interact object really!
+  } else if (class(x) == "interact"){
+
+    names(x) <- c("time", "sender", "receiver", "rssi", "source", "team")
+
+    gfish_el <- x %>%
+      select(time, sender, receiver) %>%
+      mutate(time = as.numeric(time),
+             sender = paste0(vprefix,sender, vpostfix),
+             receiver = paste0(vprefix,receiver, vpostfix))
+
+  } else {
+    stop("Unrecognized input. should be adjacency matrix, network object or edgelist.")
+  }
+
+  # use edge labels or indices
+  if (!is.null(el) & use.labels){
+    vnames <- attr(el, "vnames")
+
+    sname <- paste0(vprefix,vnames[el[,1]], vpostfix)
+    rname <- paste0(vprefix,vnames[el[,2]], vpostfix)
+
+  } else {
+    sname <- paste0(vprefix,el[,1], vpostfix)
+    rname <- paste0(vprefix,el[,2], vpostfix)
+  }
+
+
+  # if we are not coming from smtrx interact object
+  if (is.null(gfish_el)){
+    gfish_el <- data.frame(time=1,
+                           sender=sname,
+                           receiver=rname,
+                           stringsAsFactors = F)
+  }
+
+
+  gfish_el
+
+}
+
+
+
+
+#' @title Format ego centered event list for DyNAM
+#'
+#' @description Event sequences can be associated with ego-centered attributes in DyNAM. This is a
+#'  utility function to retrieve the start end timestamps of actors to construct their presence/absence
+#'  event list. Other types of event sequences are possible.
+#'
+#' @param x A data frame.
+#' @param type String indicating the type of transformation required. "MinMax" specifies start and ending
+#'  of timestamps for each badge and day.
+#' @param vprefix String prefix for labeling vertices. This is useful in relation to matrix where col
+#'  or row names might be just numbers while vertices are names.
+#' @param vpostfix String postfix for labeling vertices.
+#'
+#' @return A data frame containing time, node, replace columns.
+#'
+#' @export
+dynam_event_ego <- function(x, type="MinMax", vprefix=NULL, vpostfix=NULL){
+
+  df = NULL
+
+  if ( !("ego" %in% class(x)) ){
+    stop("Need ego centered format")
+  }
+
+
+  if (type == "MinMax"){
+
+    df <- x %>%
+      dplyr::mutate(day = lubridate::day(Timestamp)) %>%
+      dplyr::group_by(day, Badge.ID) %>%
+      dplyr::summarize(start=min(Timestamp), end=max(Timestamp)) %>%
+      tidyr::gather(key="what", value="time", start, end) %>%
+      dplyr::mutate(node=paste0(vprefix,Badge.ID,vpostfix), replace=if_else(what=="start", TRUE, FALSE))%>%
+      dplyr::select(time, node, replace, day) %>%
+      dplyr::arrange(time)
+
+  }
+
+
+  df <- data.frame(time=as.numeric(df$time),
+             node=as.character(df$node),
+             replace=df$replace)
+
+  df
+
+
+}
+
+
+
+
 # Converts a vertex attribute to a matrix. If attribute is numeric, the resulting matrix
 # will contain the difference of each node with each other node. If the attribute is a
 # character, the resulting matrix will contain TRUE if attributes match and FALSE if no.
@@ -281,6 +429,10 @@ vertex_attr_to_matrix <- function(igraph, attr_name){
 }
 
 
+
+# Extracts round-robin data from result matrix and constructs a network object
+# edge list.
+#
 get_rr <- function(rr_x, dich.by=NULL, ids=NULL, weights=NULL, df.attrs=NULL, na.replace=NULL, ...){
 
   if (!is.null(dich.by) & !is.null(weights)){
@@ -385,7 +537,7 @@ get_rr <- function(rr_x, dich.by=NULL, ids=NULL, weights=NULL, df.attrs=NULL, na
         round(col,0)
       })
 
-      #set the diagonal to 0. Self-ratings are not possible and shoud be get the mean value
+      #set the diagonal to 0. Self-ratings  are not possible and shoud be get the mean value
       diag(snet) <- 0
       diag(anet) <- 0
       diag(enet) <- 0

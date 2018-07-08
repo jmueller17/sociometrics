@@ -28,8 +28,8 @@ data attributes.}
 
 \item{covar_t}{String. Either of c("attr" | "co.loc" | "rr"). Indicating type of covariate data.
 Usually this is either a vector or a matrix of data attributes. However, there are further two
-special types, namely the colocation matrix (covar_t="co.loc") and the round robin formats (covar_t="rr").
-Default value is "attr".}
+special types, namely the colocation matrix (covar_t="co.loc") and the round robin formats
+(covar_t="rr"). Default value is "attr".}
 
 \item{intercept}{Logical. If TRUE, returns logical/matrix with all entries set to T.}
 
@@ -37,7 +37,8 @@ Default value is "attr".}
 is \code{NULL} meaning that provided \code{ids} correspond to the row index.}
 }
 \value{
-either logical vector or data matrix for given attribute containing difference between two node values.
+either logical vector or data matrix for given attribute containing difference between two
+ node values.
 
 Matrix
 }
@@ -61,14 +62,14 @@ The order of the values for the covariate vector will be identical to the order 
 \examples{
 
 #Retrieve a numeric vector of the column "Tenure" in dataframe df.attr for badge ids 2,5,7,9
-tenure <- remcovars(df.attr, ids=c(2,5,7,9), covar_v=c("Tenure"))
+tenure <- rem_covars(df.attr, ids=c(2,5,7,9), covar_v=c("Tenure"))
 
 #Retrieve a logical vector of "Role" Column, now with "Team leader" as reference category and set to TRUE
-isLeader <-  remcovars(df.attr, ids=ub, covar_v=c("Role", "Team leader"))
+isLeader <-  rem_covars(df.attr, ids=ub, covar_v=c("Role", "Team leader"))
 
 #Retrieve a n x n matrix of Gender (where n depends on the length of badge IDs in "ub") of "Gender", indicating
 #TRUE if two badges have the same "Gender" or FALSE otherwise.
-sameSex <- remcovars(df.attr, ids=ub, covar_m=c("Gender", "=="))
+sameSex <- rem_covars(df.attr, ids=ub, covar_m=c("Gender", "=="))
 
 #Retrieve the three round robin matrix for given badges, where NAs are replaced by column mean.
 remcovars(rr_csx[[team]], ids=ub, na.replace="mean", covar_t="rr")

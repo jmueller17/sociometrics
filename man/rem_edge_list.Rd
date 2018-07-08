@@ -9,7 +9,8 @@ rem_edge_list(df, rm_sup = T, replv = T, use_seq = F, ...)
 \arguments{
 \item{df}{The sociometric dataframe, containing at least the Timestamp, Badge.ID, Other.ID columns}
 
-\item{rm_sup}{Logical. Remove duplicated values from proximity/face-to-face data frame where timestamps are identical}
+\item{rm_sup}{Logical. Remove duplicated values from proximity/face-to-face data frame where timestamps
+are identical}
 
 \item{replv}{Logical. Make sure that badge ids in dataframe start at 1...ns}
 
