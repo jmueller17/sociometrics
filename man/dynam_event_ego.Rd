@@ -4,7 +4,8 @@
 \alias{dynam_event_ego}
 \title{Format ego centered event list for DyNAM}
 \usage{
-dynam_event_ego(x, type = "MinMax", vprefix = NULL, vpostfix = NULL)
+dynam_event_ego(x, type = "MinMax", vprefix = NULL, vpostfix = NULL,
+  fixtime = F, ids = NULL)
 }
 \arguments{
 \item{x}{A data frame.}
@@ -16,6 +17,13 @@ of timestamps for each badge and day.}
 or row names might be just numbers while vertices are names.}
 
 \item{vpostfix}{String postfix for labeling vertices.}
+
+\item{fixtime}{Logical. Creates for each \code{ids} a time slot entry at the minimum time value - 5 min.
+and sets it to \code{present=T}. This new time slot can be used for attaching covariate matrix whose actors need
+to be present.}
+
+\item{ids}{Vector of ids. Used together with \code{fixtime}. Indicates the ids for which a time slot
+entry will be created. Should be all actors in the event network.}
 }
 \value{
 A data frame containing time, node, replace columns.

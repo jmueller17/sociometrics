@@ -54,7 +54,7 @@ Converts a factor (or character) vector into a logical vector (or matrix)
 \details{
 The order of the values for the covariate vector will be identical to the order in the
  df_covar dataframe. It is important that the IDs of the nodes has an ascending order since
- \code{relevent::rem.dyad()} expects its nodes to be ordered from 1..n in ascending order as well.
+ \code{\link[relevent]{rem.dyad}} expects its nodes to be ordered from 1..n in ascending order as well.
  When converting a sociometric data frame to an edge list to be used with relevent package, the
  default behavior takes care that original values are replaced in ascending order starting with
  1..n.

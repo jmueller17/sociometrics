@@ -37,7 +37,7 @@
 #'
 #' @details The order of the values for the covariate vector will be identical to the order in the
 #'  df_covar dataframe. It is important that the IDs of the nodes has an ascending order since
-#'  \code{relevent::rem.dyad()} expects its nodes to be ordered from 1..n in ascending order as well.
+#'  \code{\link[relevent]{rem.dyad}} expects its nodes to be ordered from 1..n in ascending order as well.
 #'  When converting a sociometric data frame to an edge list to be used with relevent package, the
 #'  default behavior takes care that original values are replaced in ascending order starting with
 #'  1..n.
@@ -272,6 +272,7 @@ rem_edge_list <- function(df, rm_sup=T, replv=T, use_seq=F, ...){
 #' @param vpostfix String postfix for labeling vertices.
 #' @param use.lables Logical. In case a network/edgelist object is used, indicates ifthe associated
 #' vertice names should be copied or not.
+#' @param time POSIXct time object for event list.
 #'
 #' @return Object of type data.frame to be used with the DyNAM model.
 #'
@@ -286,41 +287,49 @@ rem_edge_list <- function(df, rm_sup=T, replv=T, use_seq=F, ...){
 #' dynam_event_dyad(adv, vprefix="Node_")
 #'
 #' @export
-dynam_event_dyad <- function(x, vprefix=NULL, vpostfix=NULL, use.labels=F, ...){
+dynam_event_dyad <- function(x, vprefix=NULL, vpostfix=NULL, use.labels=F, time=1, ...){
 
   el <- NULL
   gfish_el <- NULL
 
   #convert from adjacency
-  if (class(x) == "matrix"){
+  if ("matrix" %in% class(x)){
 
     if (sum(x, na.rm=T) == 0){
       warning("\nNo edges in adjacency matrix!")
-      return(NULL)
+
+      gfish_el <- data.frame(time=as.POSIXct(character()),
+                             sender=character(),
+                             receiver=character(),
+                             stringsAsFactors = F)
+
+    } else {
+
+      net <- network::network(x, matrix.type="adjacency", ...)
+      el <- network::as.edgelist(net)
+
     }
 
-    net <- network::network(x, matrix.type="adjacency", ...)
-    el <- network::as.edgelist(net)
-
-  } else if (class(x) == "network"){
+  } else if ("network" %in% class(x)){
     el <- network::as.edgelist(x)
 
-  } else if (class(x) == "edgelist"){
+  } else if ("edgelist" %in% class(x)){
     el <- x
 
-    # should be smtrx interact object really!
-  } else if (class(x) == "interact"){
+  } else if ("interact" %in% class(x)){
 
     names(x) <- c("time", "sender", "receiver", "rssi", "source", "team")
 
     gfish_el <- x %>%
       select(time, sender, receiver) %>%
-      mutate(time = as.numeric(time),
+      mutate(time = as.POSIXct(time),
              sender = paste0(vprefix,sender, vpostfix),
              receiver = paste0(vprefix,receiver, vpostfix))
 
+    gfish_el <- as.data.frame(gfish_el)
+
   } else {
-    stop("Unrecognized input. should be adjacency matrix, network object or edgelist.")
+    stop("Unrecognized input. should be adjacency matrix, network object or edgelist, or smtrx interact.")
   }
 
   # use edge labels or indices
@@ -336,9 +345,9 @@ dynam_event_dyad <- function(x, vprefix=NULL, vpostfix=NULL, use.labels=F, ...){
   }
 
 
-  # if we are not coming from smtrx interact object
+  # if we are coming from other than "smtrx" "interact" object
   if (is.null(gfish_el)){
-    gfish_el <- data.frame(time=1,
+    gfish_el <- data.frame(time=time,
                            sender=sname,
                            receiver=rname,
                            stringsAsFactors = F)
@@ -364,18 +373,22 @@ dynam_event_dyad <- function(x, vprefix=NULL, vpostfix=NULL, use.labels=F, ...){
 #' @param vprefix String prefix for labeling vertices. This is useful in relation to matrix where col
 #'  or row names might be just numbers while vertices are names.
 #' @param vpostfix String postfix for labeling vertices.
+#' @param fixtime Logical. Creates for each \code{ids} a time slot entry at the minimum time value - 5 min.
+#'  and sets it to \code{present=T}. This new time slot can be used for attaching covariate matrix whose actors need
+#'  to be present.
+#' @param ids Vector of ids. Used together with \code{fixtime}. Indicates the ids for which a time slot
+#'  entry will be created. Should be all actors in the event network.
 #'
 #' @return A data frame containing time, node, replace columns.
 #'
 #' @export
-dynam_event_ego <- function(x, type="MinMax", vprefix=NULL, vpostfix=NULL){
+dynam_event_ego <- function(x, type="MinMax", vprefix=NULL, vpostfix=NULL, fixtime=F, ids=NULL){
 
   df = NULL
 
   if ( !("ego" %in% class(x)) ){
     stop("Need ego centered format")
   }
-
 
   if (type == "MinMax"){
 
@@ -391,13 +404,75 @@ dynam_event_ego <- function(x, type="MinMax", vprefix=NULL, vpostfix=NULL){
   }
 
 
-  df <- data.frame(time=as.numeric(df$time),
-             node=as.character(df$node),
-             replace=df$replace)
+  df <- data.frame(time=as.POSIXct(df$time),
+                   node=as.character(df$node),
+                   replace=df$replace,
+                   stringsAsFactors = F)
+
+
+  if (fixtime){
+
+    #get min time
+    init_moment <- min(df$time)
+
+    #choose arbitrary start date to set all ids to "present"
+    #for easily adding covariate networks
+    init_moment <- init_moment - 60*5
+
+    #and reset presence to "absent"
+    init_end <- init_moment + 61
+
+    nodes <- paste0(vprefix, ids, vpostfix)
+
+    #create a fixed time slot where each ids is "resent"
+    start_df <- data.frame(time=init_moment,
+                           node=nodes,
+                           replace=rep(TRUE, length(nodes)),
+                           stringsAsFactors = F)
+
+    #immediate reset if afterwards to present=false.
+    end_df <- data.frame(time=init_end,
+                         node=nodes,
+                         replace=rep(FALSE, length(nodes)),
+                         stringsAsFactors = F)
+
+    df <- rbind(df, start_df)
+    df <- rbind(df, end_df)
+
+  }
+
+  df <- df[order(df$time),]
 
   df
+}
 
 
+
+
+#' @title Format nodes for DyNAM
+#'
+#' @description Utility function to format data frame of nodes for use with DyNAM.
+#'
+#' @param x Data frame of actors or nodes with arbitrary covariates
+#' @param vprefix Node prefix to be pasted into label column
+#' @param vpostfix Node postfix to be pasted into label column
+#' @param present Logical. Indicates if nodes are present/absent at start of observation
+#'
+#' @return data frame ready to be used with DyNAM models.
+#'
+#' @export
+dynam_nodes <- function(x, vprefix=NULL, vpostfix=NULL, present=FALSE){
+
+  names(x)[1] <- "label"
+  x$label <- paste0(vprefix, x$label, vpostfix)
+  x$present <- present
+
+  #convert factors to logical
+  x <- dplyr::mutate_if(x, is.factor, as.character)
+
+  x <- as.data.frame(x)
+
+  x
 }
 
 

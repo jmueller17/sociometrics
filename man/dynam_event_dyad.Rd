@@ -4,7 +4,8 @@
 \alias{dynam_event_dyad}
 \title{Format edge list for DyNAM}
 \usage{
-dynam_event_dyad(x, vprefix = NULL, vpostfix = NULL, use.labels = F, ...)
+dynam_event_dyad(x, vprefix = NULL, vpostfix = NULL, use.labels = F,
+  time = 1, ...)
 }
 \arguments{
 \item{x}{Dyadic data. Accepted formas are "matrix" (adjacency), "network" or "edgelist" objects
@@ -14,6 +15,8 @@ dynam_event_dyad(x, vprefix = NULL, vpostfix = NULL, use.labels = F, ...)
 or row names might be just numbers while vertices are names.}
 
 \item{vpostfix}{String postfix for labeling vertices.}
+
+\item{time}{POSIXct time object for event list.}
 
 \item{use.lables}{Logical. In case a network/edgelist object is used, indicates ifthe associated
 vertice names should be copied or not.}
