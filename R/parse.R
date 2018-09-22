@@ -339,7 +339,6 @@ parse.sp <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
   #df<-raw_df via parent parse.
   df <- NextMethod("parse")
 
-
   #get all badge ids from automatic assigned colnames
   bids <- str_extract(names(df), "[0-9]{4}")
   bids <- bids[!is.na(bids)]
@@ -366,8 +365,10 @@ parse.sp <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
   suppressWarnings(
     df <- mutate_all(dft, funs(as.numeric))
   )
+
   df$Badge.ID <- dft$Badge.ID
   df$Timestamp <- dft$Timestamp
+  df$Source <- "SP"
 
 
 
@@ -383,7 +384,7 @@ parse.sp <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
   #Need to specify this only for corresponding columns, not all of them!!
   #df <- df %>% filter_at(vars(-Timestamp, -Badge.ID), all_vars(.<=1))
 
-  df <- select(df, Timestamp, Badge.ID, Speaking, Overlap, Listening, Silent, Total_speaking, Total_silent)
+  df <- select(df, Timestamp, Badge.ID, Speaking, Overlap, Listening, Silent, Total_speaking, Total_silent, Source)
 
   class(df) <- class(raw_df)
 
