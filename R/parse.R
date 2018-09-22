@@ -293,15 +293,16 @@ parse.pitch <- function(raw_df, format=NULL, as_posixct=T, ts_col=1, tz=NULL){
   df.p <- df[,c(1, seq(2, ncol(df)-1, by=2), ncol(df))]
   df.v <- df[,c(seq(1, ncol(df), by=2), ncol(df))]
 
+
+
   df.p <- tidyr::gather(df.p, -Timestamp, -Source, key="Badge.ID", value="Pitch")
   df.p$Badge.ID <- stringr::str_sub(df.p$Badge.ID, 1, 4)
 
-  df.v <- tidyr::gather(df.v, -Timestamp, -Source, key="Badge.ID", value="Volume") %>%
-    dplyr::select(-Source)
+  df.v <- tidyr::gather(df.v, -Timestamp, -Source, key="Badge.ID", value="Volume")
 
   df.v$Badge.ID <- stringr::str_sub(df.v$Badge.ID, 1, 4)
 
-  df.p <- dplyr::left_join(df.p, df.v, by=c("Timestamp", "Badge.ID"))
+  df.p <- dplyr::left_join(df.p, df.v, by=c("Timestamp", "Badge.ID", "Source"))
 
   df <- df.p
   rm(df.p, df.v)

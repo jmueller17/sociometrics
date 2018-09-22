@@ -14,7 +14,7 @@ List with source (sheet) name and likely S3 class for parsing
 }
 \description{
 Sociometric DataLab exports several different data sheets with often
- cumbersome names. The following function convert abbreviated shortcuts
+ cumbersome names. The following function converts abbreviated shortcuts
  to actual sheet names and suggests the S3 class which determines the corresponding parsing function.
 }
 \examples{

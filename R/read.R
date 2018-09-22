@@ -199,10 +199,9 @@ read_audio <- function(file, type, ses_info=F, replv=F, delim="\t",
     }
 
     for (tt in type){
-      abbrs <- load_strings(tt) #which sheets?
+      abbrs <- load_strings(tt) #get abbreviations, including expansion from VOL to VOL_F VOL_B
       for (abbr in abbrs){
         tmp <- read_smtrx_file(file, type=abbr, delim=delim, ...)
-        #tmp$Source <- abbr
 
         if (is.null(raw_df)){
           raw_df <- tmp
@@ -340,7 +339,7 @@ read_smtrx_file <- function(file, type, delim="\t",...){
   fformat <- tolower(tools::file_ext(file))
 
   if (fformat == "xls" || fformat == "xlsx") {
-    sheet <- hash_source(type)$sheet
+    sheet <- hash_source(type)$sheet #convert abbreviation type to real sheet name
     df <- readxl::read_excel(file, sheet=sheet, ...)
 
   } else if (fformat == "csv") {
@@ -369,7 +368,7 @@ read_smtrx_file <- function(file, type, delim="\t",...){
 #' @title Map data type abbreviations to source names
 #'
 #' @description Sociometric DataLab exports several different data sheets with often
-#'  cumbersome names. The following function convert abbreviated shortcuts
+#'  cumbersome names. The following function converts abbreviated shortcuts
 #'  to actual sheet names and suggests the S3 class which determines the corresponding parsing function.
 #'
 #' @param abbr String of abbreviated data types.
@@ -494,7 +493,7 @@ hash_source <- function(abbr=NULL){
 #
 # @description Excel sheets store audio data in two different data sheets: one for
 #   front microphone and one for the back-mic. The loading abbreviation indicates
-#   the sheet globally, e.g "VOL" indicates the "VOL_F" or "VOL_B" sheet. If both sheets
+#   the sheet globally, e.g "VOL" indicates the "VOL_F" and "VOL_B" sheet. If both sheets
 #   need to be loaded, "VOL" will be converted into the back and front sheet.
 #   Some data such as speech participation or speech profile or turn-taking
 #   do no have the front/back difference. This function constructs the necessary loading
