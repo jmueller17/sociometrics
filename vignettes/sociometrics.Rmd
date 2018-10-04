@@ -1,0 +1,170 @@
+---
+title: "Sociometrics - Exploring Wearable Sensor Data"
+output: 
+  rmarkdown::html_vignette:
+vignette: >
+  %\VignetteIndexEntry{Sociometrics - Exploring Wearable Sensor Data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  echo = TRUE, 
+  warning = FALSE,
+  message = FALSE, 
+  fig.width=7
+)
+
+library(tidyverse)
+library(sociometrics)
+```
+
+## Introduction
+The `sociometrics` package provides tools for quickly exploring datasets derived from wearable sensors in general and Sociometric badges (produced by Humanyze, formerly Sociometric Solutions, Boston US) in particular. A large chuck of the functions provided in this package serve to read the Excel files exported from the Sociometric Datalab and parse them into tidy format. In order to faciliate quick explorations and manipulation of resulting data frames, a S3 class scheme is used to distinguish ego-centered measures such as microphone volume from dyadic measures such as interaction or mirroring metrics.
+
+An example Sociometric Datalab Excel files is provided as well as several data frames of imported measures that can be loaded with `data("gediismtrx")`. The data frames available are: `df.bm` (body activity), `df.interact` (Bluetooth and Infrared interaction), `df.pitch` (audio pitch values), and `df.vol` (audio volume). 
+
+
+## Reading and parsing Sociometric data files 
+The Humanyze (Sociometric Solutions) Datalab exports a variety of data sheets in relatively non-standard formats. The three functions `read_interaction`, `read_body` and `read_audio` provide the means to read the data sheets either from CSV, XLXS or XLS files and parse them into tidy based data frames. 
+
+```{r}
+
+df1 <- read_interaction(file="../data/datalab-full.xlsx", type="IR_BT")
+
+class(df1)
+```
+
+
+The class() indicates the resulting data frame as containing `smtrx` data in general (expect a timestamp column) and more specifically `interaction` data. 
+
+The `type` parameter of the `read_` functions indicates which specific sheet(s) will be imported. Interaction comprises Bluetooth sensors (BT) and/or Infrared (IR) detects which exist - if exported - in separate sheets. Which sheet has been imported is indicated in the `Source` column (check the documentation of each read-function for details). As the resulting dataset shows, interaction data is timestamped, and has two columns "Badge.ID" and "Other.ID", i.e. the badges involved in the dyadic interaction. Furthermore, we have a specific Radio Signal Strength Indicator (RSSI) column (which is NA for Infrared detects).
+
+```{r}
+df1
+```
+
+The parsing of the different data sheets is done automatically. By indicating which sheet to import, the `sociometrics` package determines the source format and carries out the corresponding data transformation.  
+
+Some initial useful information concerns the unique IDs that are contained in the dataset or the available dates which easily are retrieved with the corresponding functions: 
+
+```{r}
+unique_ids(df1)
+```
+
+```{r}
+unique_dates(df1)
+```
+
+
+
+### Anonymizing badge IDs
+A common tasks before analyzing sensor data is anoymization. Badge IDs can be replaced while reading the data into R. The following code reads only the front microphone volume data. Note the `replv=T` parameter which replaces the Badge.IDs with arbitrary numbers starting from 1...n
+
+```{r}
+
+df2 <- read_audio(file="../data/datalab-full.xlsx", type="VOL_F", replv=T)
+class(df2)
+```
+
+Note how the `class(df2)` is now different: apart from a `smtrx` data frame, it also is marked as `ego` based (only one Badge.ID per measurement) while also indicating that it is the `vol` (volume measure). 
+
+```{r}
+df2[which(df2$Badge.ID==2),]
+```
+
+The Badge.IDs have now been anonymized with an arbitray number. For further details see `anonymize()` in the package documentation. 
+
+```{r}
+unique_ids(df2, cols="Badge.ID")
+```
+
+
+### Undirected edges
+For many dyadic measures such as Bluetooth or Infrared, detects are directed: Badge A->B is different from B->A. Either during data import or at a later point in time, an extra column can be added to the data frame converting directed to undirected detects. 
+
+```{r}
+df3 <- read_interaction(file="../data/datalab-full.xlsx", type="BT", undirect=T)
+df3
+```
+
+The conversion of dyadic directed data to un-directed data is achieved through the functions `grp_reverse_pairs()` and `mreverse()`. 
+
+
+## Filtering data
+A custom `filter()` function is provided as extension to `dplyr::filter()`. This faciliates the filtering of badge ids over multiple columns on the one hand and dates on the other. Note the combination of filter logics in the following example: we filter for a list of ids (in thise case over two columns Badge.ID and Other.ID since it is a data frame of interactions) and the RSSI value > than -75. 
+
+```{r, eval=F}
+#filter(df1, ids=c("3119", "3180"), RSSI > -75)
+```
+
+The filter() function adapts to the type of data frame provided. Dyadic data frames (e.g. of class "interact", "act") are filtered on Badge.ID and Other.ID columns simultaneously. The parameter `ids.strict=T` indicates that the result set only contains the badges with the specified ids; if `ids.strict=F` (default) at least one of the involved badges is a member of the provided list. 
+
+The `days` parameter allows to retrieve measures pertaining to specific dates only. 
+```{r, eval=F}
+unique_dates(df2)
+
+#filter(df2, days=c("2016-01-18"))
+```
+
+
+
+## Quick visual explorations
+
+### Interaction
+```{r}
+qexpl(df1)
+```
+
+In case a undirected edge column has been added to the data frame, the resulting dyads can be coloured. 
+```{r}
+qexpl(df3, colour = "Pairs")
+```
+
+### Volume
+The following example combines a more complex `filter()` for specific anonymized badge ids with filtering for a certain time interval. The `qexpl()` then determines how to display the `vol` data frame.   
+```{r, eval=F}
+#df2 %>% 
+#  filter(ids=c(1:8), Timestamp > "2016-01-18 10:10:00" & Timestamp < "2016-01-18 11:30:00" & !is.na(Volume)) %>% 
+#  qexpl(., size=.5, title="Volume for badges", leg.pos="right")
+```
+ 
+
+
+## Clustering data
+Two rudimentary clustering functions are included in `sociometrics` package. The `cluster_ts` groups timestamps into the same cluster as long as they fall within a certain time-window length. `cluster_ids` groups Badge.IDs into the same cluster as long as the id does not change for consecutive detects. 
+
+### Cluster timestamps
+
+```{r}
+df4 <- read_interaction(file="../data/datalab-full.xlsx", type="IR", undirect=T)
+df4.1 <- cluster_ts(df4, twl=120) 
+df4.2 <- cluster_ts(df4, twl=520)
+```
+
+```{r}
+qexpl(df4.1, colour="clusterTS", leg.pos="right", title="Cluster of 120 seconds")
+```
+
+Difference between time window length of 120 seconds and 520 seconds: 
+
+```{r}
+qexpl(df4.2, colour="clusterTS", leg.pos="right", title="Cluster of 520 seconds")
+```
+
+
+### Cluster badge IDs
+
+```{r}
+df4.3 <- cluster_ids(df4) 
+qexpl(df4.3, colour="clusterIDSeq")
+```
+
+
+
+
+
+

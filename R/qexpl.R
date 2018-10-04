@@ -21,7 +21,7 @@
 #'
 #' @examples
 #'
-#' load("data/smtrx.RDATA")
+#' data("smtrx")
 #'
 #' #print interaction data
 #' qexpl(df.interact)

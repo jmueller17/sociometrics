@@ -29,7 +29,7 @@
 #' @return Original object of class sociometrics.
 #'
 #' @examples
-#' load("data/smtrx.RDATA")
+#' data("smtrx")
 #'
 #' #get all detects involving badge 3119 or 3180 with RSSI stronger than -75
 #' filter(df.interact, ids=c("3119", "3180"), RSSI > -75)

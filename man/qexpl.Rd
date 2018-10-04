@@ -32,7 +32,7 @@ A set of standard visualizations of interaction, audio, and body movement data.
 }
 \examples{
 
-load("data/smtrx.RDATA")
+data("smtrx")
 
 #print interaction data
 qexpl(df.interact)
