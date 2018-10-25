@@ -171,8 +171,14 @@ grp_reverse_pairs <- function(x, as_fct=F){
 #reversed.
 grp_entry <- function(p1,p2, as_fct=F){
 
-  #use merged string as undirected, i.e shared name.
-  pair <- paste0(p1, "-", p2)
+  # order pair taking smaller value on the left
+  # as undirected, shared name
+  if (p1 <= p2) {
+    pair <- paste0(p1, "-", p2)
+  } else {
+    pair <- paste0(p2, "-", p1)
+  }
+
 
   if (p1 == p2){
     df <- data.frame(a=c(p1), b=c(p2), g=c(pair), stringsAsFactors = as_fct)
