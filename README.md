@@ -1,6 +1,6 @@
-## R Package Sociometrics
+# R Package Sociometrics
 
-### Managing and analyzing timestamped sociometric data
+# Managing and analyzing timestamped sociometric data
 
 Collection of R tools for working with wearable sensors data, specifically Sociometric badges ((Humanyze, 
   formerly Sociometric Solutions). Most functions are utilities for reading EXCEL files exported from the
