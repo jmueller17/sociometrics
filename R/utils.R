@@ -190,6 +190,199 @@ mread <- function(readfn, files, pattern, ...){
 
 }
 
+#' @importFrom dplyr transmute
+#' @importFrom dplyr if_else
+#' @importFrom dplyr distinct
+#' @import tibble
+#' @importFrom magrittr %<>%
+#' @import network
+
+#' @title Construct edge list from round-robin matrix
+#'
+#' @description The \code{data(gedii_rr)} of package \code{gediismtrx} provides a matrix of
+#'  round robin scores for advice seeking social affinity and psychological safety. This
+#'  method provides utility functionalities to convert the round robin matrix into an
+#'  edge list which retains original (weighted) scores, dichotomizes the matrix at certain
+#'  weights, or seeks the min, max, or mean values of ties.
+#'
+#' @param x round-robin matrix
+#' @param directed logical. If set to \code{TRUE} will retain a directed edge list. If set to
+#'  \code{directed=F} the \code{weight} of each edge will be calculated according to \code{to.undir}.
+#' @param to.undir string or number. Specifies the method for collapsing directed to undirected
+#' edge list. Possible values are "min", "max", "mean", "recip", "weight", or a numeric value.
+#' See details.
+#'
+#' @details Round robin ratings are directional where person A rates person B while person B can
+#'  of course rate person A differently. On some occasions, there directional weights (or scores)
+#'  need to be collapsed, i.e. the directional ties are converted into undirectional ones based upon
+#'  certain rules to be controlled by the two parameters \code{directed} and \code{to.undir}.
+#'
+#'  The \code{to.undir} parameter takes the following values:
+#'
+#'  \describe{
+#'    \item{numeric value}{A numeric value will dichotomize the round robin matrix at the provided
+#'     value and set all ties with a weight >= to.undir to 1, or 0 otherwise.}
+#'    \item{"min"}{Will retain the minimum weight of two given ties between node pairs. If the weight
+#'     of A->B = 2 and the weight of B->A = 4, then 2 will be retained for both ties.}
+#'    \item{"max"}{Will retain the maximum weight of two given ties between node pairs. If the weight
+#'     of A->B = 2 and the weight of B->A = 4, then 4 will be retained for both ties.}
+#'    \item{"mean"}{Will retain the mean weight of two ties between node pairs. Note that NAs (i.e.
+#'     missing ratings in the matrix) will first be replaced by the overall mean value of all ratings
+#'     of the matrix. If the weight of A->B = 2 and the weight of B->A = 3, the mean value for
+#'     the node pair A-B is (2+3)/2  2.5.}
+#'    \item{"recip"}{Retains only ties which have a reciprocal weight, i.e. both involved parties
+#'     gave the same rating to each other. If weight of A->B = 2 and B->A is 2, then 2 will be
+#'     retained; otherwise the weight of the A-B pair will be replaced with 0}
+#'    \item{"weight"}{Will retain the original scores. No transformation is applied.}
+#'  }
+#'
+#' At the same time, \code{directed} controls if the resulting edge list maintains directed edges
+#' or undirected. In the latter case, \code{\link{mreverse}} is applied to obtain an undirected
+#' list of edges with their corresponding scores. A warning is issued if a undirected edge list is
+#' requested but no method for \code{to.undir} specified. Similar, if a method other than "weight"
+#' is specified for \code{to.undir}, which implies to collapse the directed to an undirected edge list,
+#' a warning will be issued that the directionality of the weights will not be maintained.
+#'
+#' @return tibble. In case an \code{directed=T}, a tibble with three columns: head, tail, edge, weight.
+#'  In case \code{directed=F} a tibble with two columns only: edge, weight.
+#'
+#' @examples
+#' #construct matrix
+#' rrmat <- matrix(c(1,0,1,2,0,0,1,1,1,2,3,4,5,2,3,4), ncol=4)
+#'
+#' #retain only reciprocal ties of same weight
+#' rr_edgelist(rrmat, directed=F, to.undir="recip")
+#'
+#' #retain min value of ties
+#' rr_edgelist(rrmat, directed=F, to.undir="min")
+#'
+#' #retain "max" values of ties
+#' rr_edgelist(rrmat, directed=F, to.undir="max")
+#'
+#' #dichotomize matrix at weight 3 or above
+#' rr_edgelist(rrmat, directed=T, to.undir=3)
+#'
+#' #retain "mean" values
+#' rr_edgelist(rrmat, directed=F, to.undir="mean")
+#'
+#' @export
+#'
+rr_edgelist <- function(x, directed=T, to.undir="weight"){
+
+  if (!is.matrix(x)){
+    stop("x requires to be of type matrix.")
+  }
+
+
+  # if a directed edge list is required, it makes no sense to merge values!
+  if (directed == T & to.undir %in% c("min", "max", "mean", "recip")){
+    warning("Using to.undir %in% c('min','max','mean','recip') produces identical weights for directed edges!")
+
+    # if matrix is converted to undirected network (edge list), then the scores need to
+    # treated/merged.
+  } else if (directed == F & !(to.undir %in% c("min", "max", "mean", "recip"))){
+    stop("Converting to undirected matrix requires to specify to.undir conversion method!")
+  }
+
+
+
+  # decide how to use weights: mean, min, max, dichotomize
+
+  # use numeric value to dichotomize matrix to 1/0
+  # can still be directed.
+  if (is.numeric(to.undir)){
+
+    rrmat <- dplyr::if_else(x[,] >= to.undir, 1, 0)
+
+    rrmat <- matrix(rrmat, nrow=dim(x)[1], ncol=dim(x)[2], dimnames = dimnames(x))
+
+    # retain min value of value pair as weight
+  } else if (to.undir == "min"){
+
+    # returns the pairwise minimum of edges
+    # NAs caused by non-response of A are replaced with value of B rating A.
+    rrmat <- pmin(x, t(x), na.rm=T)
+
+    # retain max value of value pair as weight
+  } else if (to.undir == "max"){
+
+    rrmat <- pmax(x, t(x), na.rm=T)
+
+    # use mean value of value pair as weight
+  } else if (to.undir == "mean"){
+
+    # how to deal with NAs?  First, replace any NAs with overall mean
+    # value of matrix
+    mean_weight <- mean(x, na.rm=T)
+
+    rrmat <- x
+
+    # replace NAs with overall mean value
+    rrmat[is.na(rrmat)] <- mean_weight
+
+    # calculate mean of weights between directed edge pairs
+    rrmat <- (rrmat + t(rrmat)) / 2
+
+    # reset diagonal to NA (round robin: people do not rate themselves)
+    diag(rrmat) <- NA
+
+    # only retain ties with same weight
+  } else if (to.undir == "recip") {
+
+    # which ties are reciprocal, i.e. have the same value?
+    recipm <- (x == t(x))
+
+    # if ties have same value us it, otherwise set to 0
+    rrmat <- dplyr::if_else(recipm, x, 0, missing=0)
+
+    # reconstruct matrix
+    rrmat <- matrix(rrmat, nrow=dim(x)[1], ncol=dim(x)[2], dimnames = dimnames(x))
+
+    # retain rr score as is, including if to.undir="weight"
+  } else {
+
+    rrmat <- x
+  }
+
+
+  # Convert to edge list by constructing network object
+  rrnet <- network::network(rrmat, directed=T, ignore.eval=F, names.eval="weight")
+
+  vnames <- rrnet %v% "vertex.names"
+
+  # extract directed edge list
+  el <- network::as.edgelist(rrnet, attrname="weight")
+  el[,c(1,2)] <- vnames[el[,c(1,2)]] #replace matrix col indicies with vertex names
+
+  el <- as.tibble(el[,])
+
+
+
+  # collapse to undirected edge list. We can assume that weights have been
+  # treated with either min, max, mean (see above)!
+  if (directed == F){
+
+    # build unidirectional edge names
+    el <- mreverse(el, cols=c(1,2), into="edge")
+
+    # retain distinct ones. two edge entries should have same weight!
+    el %<>%
+      dplyr::transmute(edge = edge,
+                       weight = V3) %>%
+      dplyr::distinct()
+
+    # retain directed edge list
+  } else if (directed == T){
+
+    el %<>%
+      dplyr::transmute(head = V1,
+                tail = V2,
+                edge = paste0(V1, "-", V2),
+                weight = V3)
+  }
+
+  el
+}
 
 
 
