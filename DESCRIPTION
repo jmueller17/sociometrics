@@ -5,7 +5,7 @@ Version: 0.5.0
 Author: Jörg Müller
 Maintainer: Jörg Müller <jmuller@uoc.edu>
 Authors@R: person("Jörg", "Last", email = "jmuller@uoc.edu", role = c("aut", "cre"))
-Description: Collection of R tools for working with wearable sensors data, specifically Sociometric badges ((Humanyze, 
+Description: Collection of R tools for working with wearable sensors data, specifically Sociometric badges (Humanyze, 
   formerly Sociometric Solutions). Most functions are utilities for reading EXCEL files exported from the
   Sociometric DataLab and parse those into a tidy data format.   
   Sociometric badges incorporate four sensors: Bluetooth, Infrared, Microphone or Accelerometer.  
