@@ -50,6 +50,7 @@ Round robin ratings are directional where person A rates person B while person B
     gave the same rating to each other. If weight of A->B = 2 and B->A is 2, then 2 will be
     retained; otherwise the weight of the A-B pair will be replaced with 0}
    \item{"weight"}{Will retain the original scores. No transformation is applied.}
+   \item{"prod"}{Multiplies scores of dyad. A->B=2 and B->A=5 produces 2x5=10}
  }
 
 At the same time, \code{directed} controls if the resulting edge list maintains directed edges

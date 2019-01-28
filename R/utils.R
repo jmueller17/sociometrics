@@ -234,6 +234,7 @@ mread <- function(readfn, files, pattern, ...){
 #'     gave the same rating to each other. If weight of A->B = 2 and B->A is 2, then 2 will be
 #'     retained; otherwise the weight of the A-B pair will be replaced with 0}
 #'    \item{"weight"}{Will retain the original scores. No transformation is applied.}
+#'    \item{"prod"}{Multiplies scores of dyad. A->B=2 and B->A=5 produces 2x5=10}
 #'  }
 #'
 #' At the same time, \code{directed} controls if the resulting edge list maintains directed edges
@@ -275,12 +276,12 @@ rr_edgelist <- function(x, directed=T, to.undir="weight"){
 
 
   # if a directed edge list is required, it makes no sense to merge values!
-  if (directed == T & to.undir %in% c("min", "max", "mean", "recip")){
+  if (directed == T & to.undir %in% c("min", "max", "mean", "recip", "prod")){
     warning("Using to.undir %in% c('min','max','mean','recip') produces identical weights for directed edges!")
 
     # if matrix is converted to undirected network (edge list), then the scores need to
     # treated/merged.
-  } else if (directed == F & !(to.undir %in% c("min", "max", "mean", "recip"))){
+  } else if (directed == F & !(to.undir %in% c("min", "max", "mean", "recip", "prod"))){
     stop("Converting to undirected matrix requires to specify to.undir conversion method!")
   }
 
@@ -339,6 +340,20 @@ rr_edgelist <- function(x, directed=T, to.undir="weight"){
     rrmat <- matrix(rrmat, nrow=dim(x)[1], ncol=dim(x)[2], dimnames = dimnames(x))
 
     # retain rr score as is, including if to.undir="weight"
+  } else if (to.undir == "prod") {
+
+    rrmat <- x
+
+    # replace NAs with 1, i.e. no effect when multiplied
+    rrmat[is.na(rrmat)] <- 1
+
+    # calculate mean of weights between directed edge pairs
+    rrmat <- (rrmat * t(rrmat))
+
+    # reset diagonal to NA (round robin: people do not rate themselves)
+    diag(rrmat) <- NA
+
+
   } else {
 
     rrmat <- x
