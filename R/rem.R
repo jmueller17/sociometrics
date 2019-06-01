@@ -481,7 +481,7 @@ dynam_event_presence <- function(bm, interact, vprefix=NULL, vpostfix=NULL, fixt
         sociometrics::filter(ids=id, days = day) %>%
         dplyr::mutate(day = lubridate::day(Timestamp)) %>%
         dplyr::group_by(day) %>%
-        dplyr::summarize(start=min(Timestamp)-1, end=max(Timestamp)+60) %>%
+        dplyr::summarize(start=min(Timestamp)-1, end=max(Timestamp)+61) %>%
         tidyr::gather(key="what", value="time", start, end) %>%
         dplyr::mutate(node=paste0(vprefix,id,vpostfix),
                       replace=if_else(what=="start", TRUE, FALSE))%>%
