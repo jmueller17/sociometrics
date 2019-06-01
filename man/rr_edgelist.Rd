@@ -4,7 +4,7 @@
 \alias{rr_edgelist}
 \title{Construct edge list from round-robin matrix}
 \usage{
-rr_edgelist(x, directed = T, to.undir = "weight")
+rr_edgelist(x, directed = T, to.undir = "weight", as.network = F)
 }
 \arguments{
 \item{x}{round-robin matrix}
@@ -15,6 +15,9 @@ rr_edgelist(x, directed = T, to.undir = "weight")
 \item{to.undir}{string or number. Specifies the method for collapsing directed to undirected
 edge list. Possible values are "min", "max", "mean", "recip", "weight", or a numeric value.
 See details.}
+
+\item{as.network}{Logical. If set to \code{TRUE} will return the network object, or the data frame
+of the edgelist instead (default).}
 }
 \value{
 tibble. In case an \code{directed=T}, a tibble with three columns: head, tail, edge, weight.
@@ -51,6 +54,7 @@ Round robin ratings are directional where person A rates person B while person B
     retained; otherwise the weight of the A-B pair will be replaced with 0}
    \item{"weight"}{Will retain the original scores. No transformation is applied.}
    \item{"prod"}{Multiplies scores of dyad. A->B=2 and B->A=5 produces 2x5=10}
+   \item{"sum"}{Sums scores of dyad. A->B=2 and B->A=5 produces 2+5=7}
  }
 
 At the same time, \code{directed} controls if the resulting edge list maintains directed edges

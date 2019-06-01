@@ -211,6 +211,8 @@ mread <- function(readfn, files, pattern, ...){
 #' @param to.undir string or number. Specifies the method for collapsing directed to undirected
 #' edge list. Possible values are "min", "max", "mean", "recip", "weight", or a numeric value.
 #' See details.
+#' @param as.network Logical. If set to \code{TRUE} will return the network object, or the data frame
+#'  of the edgelist instead (default).
 #'
 #' @details Round robin ratings are directional where person A rates person B while person B can
 #'  of course rate person A differently. On some occasions, there directional weights (or scores)
@@ -235,6 +237,7 @@ mread <- function(readfn, files, pattern, ...){
 #'     retained; otherwise the weight of the A-B pair will be replaced with 0}
 #'    \item{"weight"}{Will retain the original scores. No transformation is applied.}
 #'    \item{"prod"}{Multiplies scores of dyad. A->B=2 and B->A=5 produces 2x5=10}
+#'    \item{"sum"}{Sums scores of dyad. A->B=2 and B->A=5 produces 2+5=7}
 #'  }
 #'
 #' At the same time, \code{directed} controls if the resulting edge list maintains directed edges
@@ -268,7 +271,7 @@ mread <- function(readfn, files, pattern, ...){
 #'
 #' @export
 #'
-rr_edgelist <- function(x, directed=T, to.undir="weight"){
+rr_edgelist <- function(x, directed=T, to.undir="weight", as.network=F){
 
   if (!is.matrix(x)){
     stop("x requires to be of type matrix.")
@@ -276,12 +279,12 @@ rr_edgelist <- function(x, directed=T, to.undir="weight"){
 
 
   # if a directed edge list is required, it makes no sense to merge values!
-  if (directed == T & to.undir %in% c("min", "max", "mean", "recip", "prod")){
-    warning("Using to.undir %in% c('min','max','mean','recip') produces identical weights for directed edges!")
+  if (directed == T & (is.numeric(to.undir) | to.undir %in% c("min", "max", "mean", "recip", "prod", "sum"))){
+    warning("Using to.undir %in% c('min','max','mean','recip', 'prod', 'sum') produces identical weights for directed edges!")
 
     # if matrix is converted to undirected network (edge list), then the scores need to
     # treated/merged.
-  } else if (directed == F & !(to.undir %in% c("min", "max", "mean", "recip", "prod"))){
+  } else if (directed == F & to.undir == "weight") {
     stop("Converting to undirected matrix requires to specify to.undir conversion method!")
   }
 
@@ -347,8 +350,22 @@ rr_edgelist <- function(x, directed=T, to.undir="weight"){
     # replace NAs with 1, i.e. no effect when multiplied
     rrmat[is.na(rrmat)] <- 1
 
-    # calculate mean of weights between directed edge pairs
+    # calculate prod of weights between directed edge pairs
     rrmat <- (rrmat * t(rrmat))
+
+    # reset diagonal to NA (round robin: people do not rate themselves)
+    diag(rrmat) <- NA
+
+
+  } else if (to.undir == "sum") {
+
+    rrmat <- x
+
+    # replace NAs with 0, i.e. no effect when sum
+    rrmat[is.na(rrmat)] <- 0
+
+    # calculate sum of weights between directed edge pairs
+    rrmat <- (rrmat + t(rrmat))
 
     # reset diagonal to NA (round robin: people do not rate themselves)
     diag(rrmat) <- NA
@@ -370,7 +387,6 @@ rr_edgelist <- function(x, directed=T, to.undir="weight"){
   el[,c(1,2)] <- vnames[el[,c(1,2)]] #replace matrix col indicies with vertex names
 
   el <- as.tibble(el[,])
-
 
 
   # collapse to undirected edge list. We can assume that weights have been
@@ -396,7 +412,13 @@ rr_edgelist <- function(x, directed=T, to.undir="weight"){
                 weight = V3)
   }
 
-  el
+  if (as.network){
+    return(rrnet)
+
+  } else {
+    return(el)
+  }
+
 }
 
 

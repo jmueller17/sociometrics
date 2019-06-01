@@ -361,70 +361,168 @@ dynam_event_dyad <- function(x, vprefix=NULL, vpostfix=NULL, use.labels=F, time=
 
 
 
-#' @title Format ego centered event list for DyNAM
+#' @title Control presence of nodes for DyNAM
 #'
 #' @description Event sequences can be associated with ego-centered attributes in DyNAM. This is a
-#'  utility function to retrieve the start end timestamps of actors to construct their presence/absence
-#'  event list. Other types of event sequences are possible.
+#'  utility function to retrieve the start and end timestamps of actors to construct their presence/absence
+#'  event list.
 #'
-#' @param x A data frame.
-#' @param type String indicating the type of transformation required. "MinMax" specifies start and ending
-#'  of timestamps for each badge and day.
+#' @param bm Data frame with sociometric body activity
+#' @param interact Data frame with sociometric interaction data
 #' @param vprefix String prefix for labeling vertices. This is useful in relation to matrix where col
-#'  or row names might be just numbers while vertices are names.
+#'  or row names might be just numbers while vertices used in DyNAM are full names
 #' @param vpostfix String postfix for labeling vertices.
-#' @param fixtime Logical. Creates for each \code{ids} a time slot entry at the minimum time value - 5 min.
-#'  and sets it to \code{present=T}. This new time slot can be used for attaching covariate matrix whose actors need
-#'  to be present.
-#' @param ids Vector of ids. Used together with \code{fixtime}. Indicates the ids for which a time slot
-#'  entry will be created. Should be all actors in the event network.
+#' @param fixtime Logical. Creates for each \code{ids} an artificial time slot entry at the minimum time
+#'  value minus 5 minutes and sets it to \code{present=T} and \code{present=F} 1 minute after. This new time slot can be used for attaching
+#'  covariate matrix whose actors need to be present when linking the Dynamic Network Actors with
+#'  change events.
+#' @param ids Vector of ids. Used together with \code{fixtime}. Indicates the ids for which a artificial time slot
+#'  entry will be created. This should include all badge ids for given group.
+#'
+#' @details This is a utility function for preparing Sociometric (Badges) data for use with DyNAM models. In
+#'  particular it helps controlling the presence and absence of badges. By indicating when a given badge
+#'  was present (switched on) but not involved in interactions versus simply absent (badge turned off) a
+#'  more precise estimate of DyNAM rates/choice should be possible. This is also interesting for data
+#'  that spans several days. By indicating when people come to work in the morning and leave work at night
+#'  the time people are not at work and therefore can't interact is taken into account.
+#'
+#'  We use the body activity readings in order to determine at what point in time badges were switched on
+#'  and off. The occurence of the first BT (or face-to-face) detects in not reliable in this sense since
+#'  people can be at work but not interacting. However, in some cases badges body activity readings malfunction,
+#'  i.e. there is no body activity reading although we have interaction detects. Therefore, the overall
+#'  attendance of people is derived from the combination of the body activity dataset and interaction dataset
+#'  for a given day. We construct a dataframe indicating the timestamp when people clock in (switch on) the
+#'  badge in the morning and leave (switch off) later on (in the evening). In case the body activity data
+#'  is missing, we take the first and last occurance of interaction for the given day as starting and
+#'  ending timestamp.
+#'
+#'  The parameters `ids` and `fixtime` should be used together. In order to be able to add events and
+#'  nodes in the DyNAM model together, we need to make sure that all nodes exist at the start of the
+#'  timespan used in the model. Therefore we take the earlierst timestamp of the dataset minus 5 minutes
+#'  and artificially indicate that all badges specified with `ids` are present. After one minute, we set
+#'  `presence=F` in order to start with the real presence/absence of badges. Otherwise, DyNAM linkEvents
+#'  throws an error for events whose corresponding nodes are not present.
+#'
 #'
 #' @return A data frame containing time, node, replace columns.
 #'
 #' @export
-dynam_event_ego <- function(x, type="MinMax", vprefix=NULL, vpostfix=NULL, fixtime=F, ids=NULL){
+dynam_event_presence <- function(bm, interact, vprefix=NULL, vpostfix=NULL, fixtime=F, ids=NULL){
 
   df = NULL
 
-  if ( !("ego" %in% class(x)) ){
-    stop("Need ego centered format")
+  if ( !("ego" %in% class(bm)) ){
+    stop("Need ego centered sociometric format for 'bm' ")
   }
 
-  if (type == "MinMax"){
-
-    df <- x %>%
-      dplyr::mutate(day = lubridate::day(Timestamp)) %>%
-      dplyr::group_by(day, Badge.ID) %>%
-      dplyr::summarize(start=min(Timestamp), end=max(Timestamp)) %>%
-      tidyr::gather(key="what", value="time", start, end) %>%
-      dplyr::mutate(node=paste0(vprefix,Badge.ID,vpostfix), replace=if_else(what=="start", TRUE, FALSE))%>%
-      dplyr::select(time, node, replace, day) %>%
-      dplyr::arrange(time)
-
+  if (!("interact" %in% class(interact))){
+    stop("Need interaction centered sociometric format for 'act' ")
   }
 
 
+  # extracts the timestamp when each badge has been switched on and off. This gives the interval
+  # when interaction detects are theoretically possible. If there is no bm activity for the given day
+  # it means the badge was not switched on and hence the person probably absent this day (or
+  # specific hours)
+
+  df <- bm %>%
+    dplyr::mutate(day = lubridate::day(Timestamp)) %>%
+    dplyr::group_by(day, Badge.ID) %>%
+    dplyr::summarize(start=min(Timestamp), end=max(Timestamp)) %>%
+    tidyr::gather(key="what", value="time", start, end) %>%
+    dplyr::mutate(node=paste0(vprefix,Badge.ID,vpostfix), replace=if_else(what=="start", TRUE, FALSE))%>%
+    dplyr::select(time, node, replace, day) %>%
+    dplyr::arrange(time)
+
+
+
+  # however, in some cases, we don't have body activity but we have detects. Hence, it's not
+  # possible to use bm activity start and end timestamps for defining the interval during
+  # which interaction events would have been possible. Hence, we identify those badge ids
+  # for which we have interactions but no bm activity and then use the first and last
+  # interaction respectively to define the interval of possible interactions.
+
+  # get unique days from body activity data
+  days <- unique_dates(bm)
+  days <- str_split(days, pattern=", ")[[1]]
+
+  # interaction ids per days
+  interact.ids <- lapply(days, function(day){
+    d <- filter(interact, days=day)
+    unique_ids(d, cols=c("Badge.ID", "Other.ID"))
+  })
+
+  # ids from body activity profiles for each day
+  bm.ids <-  lapply(days, function(day){
+    d <- filter(bm, days=day)
+    unique_ids(d, cols=c("Badge.ID"))
+  })
+
+  # which badges appear in the interaction data but not in the body activity data?
+  add.ids <- mapply(setdiff, interact.ids, bm.ids)
+
+  # extract date and ids to add these missing badges
+  items <- sapply(add.ids, purrr::is_empty)
+  add.days <- days[!items]
+  add.ids <- add.ids[!items]
+
+  # for each day
+  for (i in 1:length(add.days)){
+    day <- add.days[[i]]
+    misid <- add.ids[[i]]
+
+    # for each id existing in interaction df but missing in bm
+    for (k in 1:length(misid)){
+      id <- misid[k]
+
+      # get min and max interaction time. The max time needs + X seconds
+      # otherwise we set presence=F when last interaction occurs!
+      df.add <- interact %>%
+        sociometrics::filter(ids=id, days = day) %>%
+        dplyr::mutate(day = lubridate::day(Timestamp)) %>%
+        dplyr::group_by(day) %>%
+        dplyr::summarize(start=min(Timestamp)-1, end=max(Timestamp)+60) %>%
+        tidyr::gather(key="what", value="time", start, end) %>%
+        dplyr::mutate(node=paste0(vprefix,id,vpostfix),
+                      replace=if_else(what=="start", TRUE, FALSE))%>%
+        dplyr::select(time, node, replace, day) %>%
+        dplyr::arrange(time)
+
+      # add these to the main bm activity data frame
+      df <- bind_rows(df, df.add)
+
+    }
+  }
+
+
+  # convert to plain data frame for DyNAM
   df <- data.frame(time=as.POSIXct(df$time),
                    node=as.character(df$node),
                    replace=df$replace,
                    stringsAsFactors = F)
 
+  if (fixtime & is.null(ids)){
+    stop("'fixtime=T' but ids missing. Specify all ids for which initial presence needs to be defined.")
+  }
 
+  # create an artificial starting time for all badges in order to avoid error messages when
+  # linking events in DyNAM. All badges are present at an artificial timepoint in order to add
+  # events and then immediately set to "absent".
   if (fixtime){
 
     #get min time
     init_moment <- min(df$time)
 
-    #choose arbitrary start date to set all ids to "present"
+    #choose arbitrary start date to set all ids to "present=T"
     #for easily adding covariate networks
     init_moment <- init_moment - 60*5
 
-    #and reset presence to "absent"
+    #and reset presence to "absent" right away.
     init_end <- init_moment + 61
 
     nodes <- paste0(vprefix, ids, vpostfix)
 
-    #create a fixed time slot where each ids is "resent"
+    #create a fixed time slot where each id is "present"
     start_df <- data.frame(time=init_moment,
                            node=nodes,
                            replace=rep(TRUE, length(nodes)),

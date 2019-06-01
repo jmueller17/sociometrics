@@ -1,7 +1,7 @@
 Package: sociometrics
 Type: Package
 Title: Managing and analyzing timestamped wearable sensor data
-Version: 0.5.0
+Version: 0.6.1
 Author: Jörg Müller
 Maintainer: Jörg Müller <jmuller@uoc.edu>
 Authors@R: person("Jörg", "Last", email = "jmuller@uoc.edu", role = c("aut", "cre"))
