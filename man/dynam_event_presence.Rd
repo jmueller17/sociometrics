@@ -5,7 +5,7 @@
 \title{Control presence of nodes for DyNAM}
 \usage{
 dynam_event_presence(bm, interact, vprefix = NULL, vpostfix = NULL,
-  fixtime = F, ids = NULL)
+  fixtime = F, ids = NULL, window = 1)
 }
 \arguments{
 \item{bm}{Data frame with sociometric body activity}
@@ -24,6 +24,8 @@ change events.}
 
 \item{ids}{Vector of ids. Used together with \code{fixtime}. Indicates the ids for which a artificial time slot
 entry will be created. This should include all badge ids for given group.}
+
+\item{window}{Numeric. The time that gets added or removed from the events.}
 }
 \value{
 A data frame containing time, node, replace columns.
@@ -31,7 +33,7 @@ A data frame containing time, node, replace columns.
 \description{
 Event sequences can be associated with ego-centered attributes in DyNAM. This is a
  utility function to retrieve the start and end timestamps of actors to construct their presence/absence
- event list.
+ event list by combining the body activity and interaction data frames.
 }
 \details{
 This is a utility function for preparing Sociometric (Badges) data for use with DyNAM models. In
@@ -41,10 +43,10 @@ This is a utility function for preparing Sociometric (Badges) data for use with 
  that spans several days. By indicating when people come to work in the morning and leave work at night
  the time people are not at work and therefore can't interact is taken into account.
 
- We use the body activity readings in order to determine at what point in time badges were switched on
- and off. The occurence of the first BT (or face-to-face) detects in not reliable in this sense since
- people can be at work but not interacting. However, in some cases badges body activity readings malfunction,
- i.e. there is no body activity reading although we have interaction detects. Therefore, the overall
+ We combine the information of body activity readings with interaction detects. Body activity readings
+ are a good indicator of when badges are switched on; however, in some cases badges body activity
+ readings malfunction, i.e. there is no body activity reading although we have interaction detects.
+ Therefore, the overall
  attendance of people is derived from the combination of the body activity dataset and interaction dataset
  for a given day. We construct a dataframe indicating the timestamp when people clock in (switch on) the
  badge in the morning and leave (switch off) later on (in the evening). In case the body activity data
@@ -57,4 +59,11 @@ This is a utility function for preparing Sociometric (Badges) data for use with 
  and artificially indicate that all badges specified with `ids` are present. After one minute, we set
  `presence=F` in order to start with the real presence/absence of badges. Otherwise, DyNAM linkEvents
  throws an error for events whose corresponding nodes are not present.
+
+ The `window` parameter specifies the time added (or removed) to the events. Be default this is 1
+ since we take the time that the last interaction occurs at time X and set the presence of the badge
+ for that time to FALSE. This will produce an error since DyNAM expects this badge to be present
+ when an interaction occurs. This s resolved by simply adding the default window effect of 1 to the last
+ interaction (or removeing 1 for the first interaction). When window effects are used in the DyNAM effects
+ the window should be set to the same size.
 }
