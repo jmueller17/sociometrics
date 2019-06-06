@@ -127,14 +127,44 @@ rem_covars <- function(df_covars, ids=NULL, covar_v=NULL,
 
   #create a difference matrix. Does not preserve RID values but numbers 1...n
   if (!is.null(covar_m) & is.data.frame(df_covars) & covar_t=="attr"){
+
+    col <- covar_m[1]
+    oper <- covar_m[2]
+    attr <- covar_m[3]
+
     #extract attribute vector from data frame
-    v <- (df_covars[,covar_m[1]] )
+    v <- (df_covars[,col])
 
     #simplify it. outer() does not work with tibble
-    v <- v[[covar_m[1]]]
+    v <- v[[col]]
 
-    #generate difference matrix
-    v <- outer(v,v, FUN=covar_m[2])
+    # if the second covar is a math symbol, we can feed it to the outer() funciton
+    if (oper %in% c("+", "-", "*", "==", "/", "^", "!=") & is.na(attr)){
+      #generate difference matrix
+      v <- outer(v,v, FUN=covar_m[2])
+
+    # use the attribute for which we want to construct the matrix
+    } else if (!is.na(attr)) {
+
+      # set the selected attribute to true
+      v <- if_else(v == attr, 1, 0)
+
+      # construct it as matrix
+      mv <- matrix(rep(v, length(v)), ncol=length(v), byrow=T)
+
+      #generate difference matrix
+      mv <- mv + t(mv)
+
+      #dichotomize matrix. == 2 because we sum.
+      mv[,] <- if_else(mv == 2, 1, 0)
+
+      v <- mv
+
+      d <- dim(v)
+      dimnames(v) <- list(c(1:d[1]), c(1:d[2]))
+
+
+    }
 
   }
 
@@ -267,6 +297,8 @@ rem_edge_list <- function(df, rm_sup=T, replv=T, use_seq=F, ...){
 #'
 #' @param x Dyadic data. Accepted formas are "matrix" (adjacency), "network" or "edgelist" objects
 #' (sna package), "interact" data frame.
+#' @param twl Numeric. Indicates the time window length to cluster (merge) interactions together.
+#'  This is passed to \code{twl} of \code{cluster_ts}.
 #' @param vprefix String prefix for labeling vertices. This is useful in relation to matrix where col
 #'  or row names might be just numbers while vertices are names.
 #' @param vpostfix String postfix for labeling vertices.
@@ -287,10 +319,11 @@ rem_edge_list <- function(df, rm_sup=T, replv=T, use_seq=F, ...){
 #' dynam_event_dyad(adv, vprefix="Node_")
 #'
 #' @export
-dynam_event_dyad <- function(x, vprefix=NULL, vpostfix=NULL, use.labels=F, time=1, ...){
+dynam_event_dyad <- function(x, twl=0, vprefix=NULL, vpostfix=NULL, use.labels=F, time=1, ...){
 
   el <- NULL
   gfish_el <- NULL
+
 
   #convert from adjacency
   if ("matrix" %in% class(x)){
@@ -318,19 +351,48 @@ dynam_event_dyad <- function(x, vprefix=NULL, vpostfix=NULL, use.labels=F, time=
 
   } else if ("interact" %in% class(x)){
 
-    names(x) <- c("time", "sender", "receiver", "rssi", "source", "team")
+    #should interactions be clustered together?
+    if (twl > 0){
+      x %<>%
+        mreverse() %>%
+        cluster_ts(twl=twl)
 
-    gfish_el <- x %>%
-      select(time, sender, receiver) %>%
-      mutate(time = as.POSIXct(time),
-             sender = paste0(vprefix,sender, vpostfix),
-             receiver = paste0(vprefix,receiver, vpostfix))
+
+      gfish_el <- x %>%
+        group_by(Dyad, clusterTS) %>%
+        summarize(start = min(Timestamp),
+                  end = max(Timestamp),
+                  detects = n(),
+                  team = Team[1])%>%
+        separate(Dyad, into=c("sender", "receiver"), sep="-") %>%
+        arrange(clusterTS)%>%
+        select(time=start, sender, receiver, end, detects, clusterTS, team) %>%
+        mutate(time = as.POSIXct(time),
+               sender = paste0(vprefix,sender, vpostfix),
+               receiver = paste0(vprefix,receiver, vpostfix))
+
+
+    } else {
+
+
+      names(x) <- c("time", "sender", "receiver", "rssi", "source", "team")
+
+      gfish_el <- x %>%
+        select(time, sender, receiver) %>%
+        mutate(time = as.POSIXct(time),
+               sender = paste0(vprefix,sender, vpostfix),
+               receiver = paste0(vprefix,receiver, vpostfix))
+    }
+
 
     gfish_el <- as.data.frame(gfish_el)
+    gfish_el <- gfish_el[order(gfish_el$time),]
 
   } else {
     stop("Unrecognized input. should be adjacency matrix, network object or edgelist, or smtrx interact.")
   }
+
+
 
   # use edge labels or indices
   if (!is.null(el) & use.labels){

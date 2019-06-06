@@ -212,7 +212,8 @@ mread <- function(readfn, files, pattern, ...){
 #' edge list. Possible values are "min", "max", "mean", "recip", "weight", or a numeric value.
 #' See details.
 #' @param as.network Logical. If set to \code{TRUE} will return the network object, or the data frame
-#'  of the edgelist instead (default).
+#'  of the edgelist instead (default). To retrieve in matrix format use \code{as.sociomatrix(x, attrname="weight")}
+#'
 #'
 #' @details Round robin ratings are directional where person A rates person B while person B can
 #'  of course rate person A differently. On some occasions, there directional weights (or scores)
@@ -238,6 +239,8 @@ mread <- function(readfn, files, pattern, ...){
 #'    \item{"weight"}{Will retain the original scores. No transformation is applied.}
 #'    \item{"prod"}{Multiplies scores of dyad. A->B=2 and B->A=5 produces 2x5=10}
 #'    \item{"sum"}{Sums scores of dyad. A->B=2 and B->A=5 produces 2+5=7}
+#'    \item{"diff"}{Absolute difference between two dyad scores. A->B=2 and B->A=5 produces
+#'     abs(2-5)=3}
 #'  }
 #'
 #' At the same time, \code{directed} controls if the resulting edge list maintains directed edges
@@ -271,7 +274,7 @@ mread <- function(readfn, files, pattern, ...){
 #'
 #' @export
 #'
-rr_edgelist <- function(x, directed=T, to.undir="weight", as.network=F){
+rr_edgelist <- function(x, directed=T, to.undir="weight", as.network=F, impute=NULL){
 
   if (!is.matrix(x)){
     stop("x requires to be of type matrix.")
@@ -369,6 +372,19 @@ rr_edgelist <- function(x, directed=T, to.undir="weight", as.network=F){
 
     # reset diagonal to NA (round robin: people do not rate themselves)
     diag(rrmat) <- NA
+
+  } else if (to.undir == "diff") {
+
+      rrmat <- x
+
+      # replace NAs with 0, i.e. no effect when subtraced
+      rrmat[is.na(rrmat)] <- 0
+
+      # calculate sum of weights between directed edge pairs
+      rrmat <- abs(rrmat - t(rrmat))
+
+      # reset diagonal to NA (round robin: people do not rate themselves)
+      diag(rrmat) <- NA
 
 
   } else {

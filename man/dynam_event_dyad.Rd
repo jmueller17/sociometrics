@@ -4,12 +4,15 @@
 \alias{dynam_event_dyad}
 \title{Format edge list for DyNAM}
 \usage{
-dynam_event_dyad(x, vprefix = NULL, vpostfix = NULL, use.labels = F,
-  time = 1, ...)
+dynam_event_dyad(x, twl = 0, vprefix = NULL, vpostfix = NULL,
+  use.labels = F, time = 1, ...)
 }
 \arguments{
 \item{x}{Dyadic data. Accepted formas are "matrix" (adjacency), "network" or "edgelist" objects
 (sna package), "interact" data frame.}
+
+\item{twl}{Numeric. Indicates the time window length to cluster (merge) interactions together.
+This is passed to \code{twl} of \code{cluster_ts}.}
 
 \item{vprefix}{String prefix for labeling vertices. This is useful in relation to matrix where col
 or row names might be just numbers while vertices are names.}

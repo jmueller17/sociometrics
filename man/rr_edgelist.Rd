@@ -17,7 +17,7 @@ edge list. Possible values are "min", "max", "mean", "recip", "weight", or a num
 See details.}
 
 \item{as.network}{Logical. If set to \code{TRUE} will return the network object, or the data frame
-of the edgelist instead (default).}
+of the edgelist instead (default). To retrieve in matrix format use \code{as.sociomatrix(x, attrname="weight")}}
 }
 \value{
 tibble. In case an \code{directed=T}, a tibble with three columns: head, tail, edge, weight.
@@ -55,6 +55,8 @@ Round robin ratings are directional where person A rates person B while person B
    \item{"weight"}{Will retain the original scores. No transformation is applied.}
    \item{"prod"}{Multiplies scores of dyad. A->B=2 and B->A=5 produces 2x5=10}
    \item{"sum"}{Sums scores of dyad. A->B=2 and B->A=5 produces 2+5=7}
+   \item{"diff"}{Absolute difference between two dyad scores. A->B=2 and B->A=5 produces
+    abs(2-5)=3}
  }
 
 At the same time, \code{directed} controls if the resulting edge list maintains directed edges
