@@ -197,13 +197,15 @@ mread <- function(readfn, files, pattern, ...){
 #' @importFrom magrittr %<>%
 #' @import network
 
-#' @title Construct edge list from round-robin matrix
+#' @title Extract round-robin rating
 #'
 #' @description The \code{data(gedii_rr)} of package \code{gediismtrx} provides a matrix of
-#'  round robin scores for advice seeking social affinity and psychological safety. This
-#'  method provides utility functionalities to convert the round robin matrix into an
-#'  edge list which retains original (weighted) scores, dichotomizes the matrix at certain
-#'  weights, or seeks the min, max, or mean values of ties.
+#'  round robin scores for advice seeking, social affinity and psychological safety. This
+#'  method provides utility functionalities to convert the round robin matrix into either an
+#'  edge list, a network object or a matrix. It performs several transformations if required,
+#'  i.e. collapses directed ties to undirected ties or imputes NA values. If directed ties are
+#'  converted to undirected ties, several methods can be specified for conversion such as using
+#'  only the max or minmum value, the sum, product or mean scores.
 #'
 #' @param x round-robin matrix
 #' @param directed logical. If set to \code{TRUE} will retain a directed edge list. If set to
@@ -211,8 +213,12 @@ mread <- function(readfn, files, pattern, ...){
 #' @param to.undir string or number. Specifies the method for collapsing directed to undirected
 #' edge list. Possible values are "min", "max", "mean", "recip", "weight", or a numeric value.
 #' See details.
-#' @param as.network Logical. If set to \code{TRUE} will return the network object, or the data frame
-#'  of the edgelist instead (default). To retrieve in matrix format use \code{as.sociomatrix(x, attrname="weight")}
+#' @param impute.na string. Indicates how NAs should be imputed \code{impute.na=["mean"|"recip"|"native"]}.
+#'  \code{"mean"} replaces NAs with mean value of matrix while \code{"recip"} replaces egos own rating (NAs)
+#'  with ratings received from each alter. \code{"native"} uses replacement values depending on the
+#'  to.undir method chose.
+#' @param as.type string. The round-robin rating can be retrieved in different formats: as
+#'  \code{"edgelist"}, \code{"network"} object, or \code{"matrix"}.
 #'
 #'
 #' @details Round robin ratings are directional where person A rates person B while person B can
@@ -250,6 +256,17 @@ mread <- function(readfn, files, pattern, ...){
 #' is specified for \code{to.undir}, which implies to collapse the directed to an undirected edge list,
 #' a warning will be issued that the directionality of the weights will not be maintained.
 #'
+#' The \code{impute.na} parameter controls how NAs in round-robin matrix are imputed. In case
+#' \code{impute="recip"} entire rows of NAs (person did not rate all others) is replaced with the
+#' ratings ego has received by all alters. This means we replaced all NAs in row i with the transpose
+#' of ratings given in col(i). In case more than two people did not respond (more than two rows are
+#' all NAs), then the remaining NA entries are replaced with the mean value of the global matrix. This
+#' is different from \code{impute=="mean"} where all NAs are imputed by the mean of the entire
+#' matrix.
+#'
+#' The \code{as.type} allows to select between different return types, either an edgelist, a statnet
+#' network object or a sociomatrix.
+#'
 #' @return tibble. In case an \code{directed=T}, a tibble with three columns: head, tail, edge, weight.
 #'  In case \code{directed=F} a tibble with two columns only: edge, weight.
 #'
@@ -258,23 +275,28 @@ mread <- function(readfn, files, pattern, ...){
 #' rrmat <- matrix(c(1,0,1,2,0,0,1,1,1,2,3,4,5,2,3,4), ncol=4)
 #'
 #' #retain only reciprocal ties of same weight
-#' rr_edgelist(rrmat, directed=F, to.undir="recip")
+#' rr_rating(rrmat, directed=F, to.undir="recip")
 #'
 #' #retain min value of ties
-#' rr_edgelist(rrmat, directed=F, to.undir="min")
+#' rr_rating(rrmat, directed=F, to.undir="min")
 #'
 #' #retain "max" values of ties
-#' rr_edgelist(rrmat, directed=F, to.undir="max")
+#' rr_rating(rrmat, directed=F, to.undir="max")
 #'
 #' #dichotomize matrix at weight 3 or above
-#' rr_edgelist(rrmat, directed=T, to.undir=3)
+#' rr_rating(rrmat, directed=T, to.undir=3)
 #'
 #' #retain "mean" values
-#' rr_edgelist(rrmat, directed=F, to.undir="mean")
+#' rr_rating(rrmat, directed=F, to.undir="mean")
+#'
+#' #impute NAs. replace row=2 of NAs with col=2 values
+#' rrmat <- matrix(c(1,NA,1,2,0,NA,1,1,1,NA,0,4,5,NA,3,4), ncol=4)
+#' rr_rating(rrmat, impute.na="recip", as.type="matrix")
+#'
 #'
 #' @export
 #'
-rr_edgelist <- function(x, directed=T, to.undir="weight", as.network=F, impute=NULL){
+rr_rating <- function(x, directed=T, to.undir="weight", as.type="edgelist", impute.na="native"){
 
   if (!is.matrix(x)){
     stop("x requires to be of type matrix.")
@@ -291,6 +313,53 @@ rr_edgelist <- function(x, directed=T, to.undir="weight", as.network=F, impute=N
     stop("Converting to undirected matrix requires to specify to.undir conversion method!")
   }
 
+
+  # impute NAs
+  if (impute.na == "mean") {
+
+    mean_weight <- mean(x, na.rm=T)
+    x[is.na(x)] <- mean_weight
+
+  # absent ego, missing ratings of ego, but rated by all alters
+  } else if (impute.na == "recip"){
+
+    # which rows are all NAs
+    ri <- which(rowSums(is.na(x)) == ncol(x), arr.ind=T)
+
+    # use corresponding column of values to replace row
+    x[ri,] <- t(x[,ri])
+
+    # in case of two or more people missing, replace by mean.
+    mean_weight <- mean(x, na.rm=T)
+    x[is.na(x)] <- mean_weight
+
+    diag(x) <- 0
+
+    # check if entire columns are NA, i.e. member who has not received any rating
+    if (colSums(is.na(x)) == nrow(x)){
+      warning("Round-robin rating with entire column of NA values!")
+    }
+
+
+  # if no impute method is specified, use 0 for sum and diff, i.e. does
+  # not affect result
+  } else if (impute.na == "native" & to.undir %in% c("sum", "diff")) {
+
+    warning("NAs of round-robin matrix imputed with 0!")
+
+    x[is.na(x)] <- 0
+
+  # replace NAs with 1, i.e. no effect when multiplied
+  } else if (impute.na == "native" & to.undir %in% c("prod")) {
+
+    warning("NAs of round-robin matrix imputed with 1!")
+
+    x[is.na(x)] <- 1
+
+  } else {
+    warning("No NAs imputed, hope this is ok!")
+
+  }
 
 
   # decide how to use weights: mean, min, max, dichotomize
@@ -318,20 +387,22 @@ rr_edgelist <- function(x, directed=T, to.undir="weight", as.network=F, impute=N
     # use mean value of value pair as weight
   } else if (to.undir == "mean"){
 
-    # how to deal with NAs?  First, replace any NAs with overall mean
-    # value of matrix
-    mean_weight <- mean(x, na.rm=T)
+    # # how to deal with NAs?  First, replace any NAs with overall mean
+    # # value of matrix
+    # mean_weight <- mean(x, na.rm=T)
+    #
+    # rrmat <- x
+    #
+    # # replace NAs with overall mean value
+    # rrmat[is.na(rrmat)] <- mean_weight
 
     rrmat <- x
-
-    # replace NAs with overall mean value
-    rrmat[is.na(rrmat)] <- mean_weight
 
     # calculate mean of weights between directed edge pairs
     rrmat <- (rrmat + t(rrmat)) / 2
 
-    # reset diagonal to NA (round robin: people do not rate themselves)
-    diag(rrmat) <- NA
+    # reset diagonal to NA
+    # diag(rrmat) <- NA
 
     # only retain ties with same weight
   } else if (to.undir == "recip") {
@@ -350,47 +421,50 @@ rr_edgelist <- function(x, directed=T, to.undir="weight", as.network=F, impute=N
 
     rrmat <- x
 
-    # replace NAs with 1, i.e. no effect when multiplied
-    rrmat[is.na(rrmat)] <- 1
+    # # replace NAs with 1, i.e. no effect when multiplied
+    # rrmat[is.na(rrmat)] <- 1
 
     # calculate prod of weights between directed edge pairs
     rrmat <- (rrmat * t(rrmat))
 
-    # reset diagonal to NA (round robin: people do not rate themselves)
-    diag(rrmat) <- NA
+    # reset diagonal to NA
+    #diag(rrmat) <- NA
 
 
   } else if (to.undir == "sum") {
 
     rrmat <- x
 
-    # replace NAs with 0, i.e. no effect when sum
-    rrmat[is.na(rrmat)] <- 0
+    # # replace NAs with 0, i.e. no effect when sum
+    # rrmat[is.na(rrmat)] <- 0
 
     # calculate sum of weights between directed edge pairs
     rrmat <- (rrmat + t(rrmat))
 
-    # reset diagonal to NA (round robin: people do not rate themselves)
-    diag(rrmat) <- NA
+    # reset diagonal to NA
+    # diag(rrmat) <- NA
 
   } else if (to.undir == "diff") {
 
       rrmat <- x
 
-      # replace NAs with 0, i.e. no effect when subtraced
-      rrmat[is.na(rrmat)] <- 0
+      # # replace NAs with 0, i.e. no effect when subtraced
+      # rrmat[is.na(rrmat)] <- 0
 
       # calculate sum of weights between directed edge pairs
       rrmat <- abs(rrmat - t(rrmat))
 
       # reset diagonal to NA (round robin: people do not rate themselves)
-      diag(rrmat) <- NA
+      #diag(rrmat) <- NA
 
 
   } else {
 
     rrmat <- x
   }
+
+
+  diag(rrmat) <- NA
 
 
   # Convert to edge list by constructing network object
@@ -402,7 +476,7 @@ rr_edgelist <- function(x, directed=T, to.undir="weight", as.network=F, impute=N
   el <- network::as.edgelist(rrnet, attrname="weight")
   el[,c(1,2)] <- vnames[el[,c(1,2)]] #replace matrix col indicies with vertex names
 
-  el <- as.tibble(el[,])
+  el <- as_tibble(el[,])
 
 
   # collapse to undirected edge list. We can assume that weights have been
@@ -428,11 +502,20 @@ rr_edgelist <- function(x, directed=T, to.undir="weight", as.network=F, impute=N
                 weight = V3)
   }
 
-  if (as.network){
+
+  # which return type was requested
+  if (as.type == "network"){
     return(rrnet)
 
-  } else {
+  } else if (as.type == "matrix"){
+    return(as.sociomatrix(rrnet, attrname="weight"))
+
+  } else if (as.type == "edgelist"){
     return(el)
+
+  } else {
+    stop("Unknown return type specified. Needs to be 'network', 'matrix', or 'edgelist'")
+
   }
 
 }
