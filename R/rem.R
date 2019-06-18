@@ -680,14 +680,49 @@ get_rr <- function(rr_x, ids=NULL){
 
   #make row and column names equal. Column names have format "advice_RID"; Since we have the
   #three matrix separated, each column name only contains the RID now.
-  row.names(snet) <- df$RID
-  row.names(anet) <- df$RID
-  row.names(enet) <- df$RID
 
-  names(snet) <- df$RID
-  names(anet) <- df$RID
-  names(enet) <- df$RID
+  # check if matrix is emtpy. ease ratings are missing from public gediismtrx data
+  if (length(snet)>0){
+    row.names(snet) <- df$RID
+    names(snet) <- df$RID
+    snet <- subset_rr(snet, ids)
 
+    #convert to matrix
+    snet <- as.matrix(snet)
+
+  } else {
+    snet <- NULL
+  }
+
+
+  if (length(anet) > 0){
+    row.names(anet) <- df$RID
+    names(anet) <- df$RID
+    anet <- subset_rr(anet, ids)
+    anet <- as.matrix(anet)
+
+  } else {
+    anet <- NULL
+  }
+
+
+  if (length(enet) > 0){
+    row.names(enet) <- df$RID
+    names(enet) <- df$RID
+    enet <- subset_rr(enet, ids)
+    enet <- as.matrix(enet)
+
+  } else {
+    enet <- NULL
+  }
+
+
+  list(m_soc=snet,m_adv=anet,m_eas=enet)
+}
+
+
+# custom function to subset round robing ratings.
+subset_rr <- function(x, ids){
 
   #if a vector of RID/ids have been provided, we subset the matrix.
   #This is useful for constructing REM covariate matrix
@@ -700,18 +735,12 @@ get_rr <- function(rr_x, ids=NULL){
     ids <- as.character(ids)
 
     #only retain those cols/rows that are specified in used ids
-    snet <- snet[ids,ids]
-    anet <- anet[ids,ids]
-    enet <- enet[ids,ids]
+    x <- x[ids,ids]
 
   }
 
-
-  #convert to matrix
-  snet <- as.matrix(snet)
-  anet <- as.matrix(anet)
-  enet <- as.matrix(enet)
-
-  list(m_soc=snet,m_adv=anet,m_eas=enet)
+  x
 }
+
+
 
