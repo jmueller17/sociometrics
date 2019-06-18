@@ -5,7 +5,7 @@
 \title{Convert covariate factors to logical vector}
 \usage{
 rem_covars(df_covars, ids = NULL, covar_v = NULL, covar_m = NULL,
-  covar_t = "attr", intercept = F, idcol = NULL, ...)
+  covar_t = "attr", idcol = NULL, ...)
 }
 \arguments{
 \item{df_covars}{Dataframe or matrix which contains covariate information. This can either be
@@ -21,17 +21,15 @@ This has to correspond to the column name in df_covars. Second entry specifies r
 to \code{TRUE}. If only first entry is provided original attribute values are
 returned and not a logical vector. Returns logical *vector*}
 
-\item{covar_m}{Vector of length two. First entry specifies name of the attribute to
-retrieve. Second entry specifies difference function, usually either "==" for binary values
-like gender or "-|+" difference for numeric values. Returns n x n *matrix* of difference between
-data attributes.}
+\item{covar_m}{Vector of length two or three. First entry specifies name of the attribute to
+retrieve (e.g. gender). Second entry specifies comparison to be applied such as usually comparison
+operators "==", "!=" or operators for numeric values such as "-|+".
+Returns n x n *matrix*.}
 
 \item{covar_t}{String. Either of c("attr" | "co.loc" | "rr"). Indicating type of covariate data.
 Usually this is either a vector or a matrix of data attributes. However, there are further two
 special types, namely the colocation matrix (covar_t="co.loc") and the round robin formats
 (covar_t="rr"). Default value is "attr".}
-
-\item{intercept}{Logical. If TRUE, returns logical/matrix with all entries set to T.}
 
 \item{idcol}{Name or index of the column which should be used to filter for \code{ids}. Default
 is \code{NULL} meaning that provided \code{ids} correspond to the row index.}
@@ -58,6 +56,11 @@ The order of the values for the covariate vector will be identical to the order 
  When converting a sociometric data frame to an edge list to be used with relevent package, the
  default behavior takes care that original values are replaced in ascending order starting with
  1..n.
+
+ \code{covar_m} retrieves a (difference) matrix from covariate attributes. \code{covar_m=c("Gender", "==", "Men")}
+ for example retrieves a matrix where men-men dyad are set to 1 and all other combinations of
+ dyads is set to 0. The same code without a reference category specified \code{covar_m=c("Gender", "==")}
+ returns a matrix where homophilios ties (men-men or women-women) is set to 1 and all others 0.
 }
 \examples{
 
@@ -71,8 +74,12 @@ isLeader <-  rem_covars(df.attr, ids=ub, covar_v=c("Role", "Team leader"))
 #TRUE if two badges have the same "Gender" or FALSE otherwise.
 sameSex <- rem_covars(df.attr, ids=ub, covar_m=c("Gender", "=="))
 
-#Retrieve the three round robin matrix for given badges, where NAs are replaced by column mean.
-remcovars(rr_csx[[team]], ids=ub, na.replace="mean", covar_t="rr")
+#Retrieve a n x n matrix of Gender where men-men ties are set to 1 and all others to 0
+rem_covars(df.attr, covar_m=c("Gender", "==", "Men"))
+
+#Retrieve difference matrix of factor roles; if Role is factor, uses underlying numeric
+#representation to construct difference.
+rem_covars(df.attr, covar_m=c("Role", "-"))
 
 }
 \seealso{

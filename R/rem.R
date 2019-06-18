@@ -20,15 +20,14 @@
 #'  This has to correspond to the column name in df_covars. Second entry specifies reference value set
 #'  to \code{TRUE}. If only first entry is provided original attribute values are
 #'  returned and not a logical vector. Returns logical *vector*
-#' @param covar_m Vector of length two. First entry specifies name of the attribute to
-#'  retrieve. Second entry specifies difference function, usually either "==" for binary values
-#'  like gender or "-|+" difference for numeric values. Returns n x n *matrix* of difference between
-#'  data attributes.
+#' @param covar_m Vector of length two or three. First entry specifies name of the attribute to
+#'  retrieve (e.g. gender). Second entry specifies comparison to be applied such as usually comparison
+#'  operators "==", "!=" or operators for numeric values such as "-|+".
+#'  Returns n x n *matrix*.
 #' @param covar_t String. Either of c("attr" | "co.loc" | "rr"). Indicating type of covariate data.
 #'  Usually this is either a vector or a matrix of data attributes. However, there are further two
 #'  special types, namely the colocation matrix (covar_t="co.loc") and the round robin formats
 #'  (covar_t="rr"). Default value is "attr".
-#' @param intercept Logical. If TRUE, returns logical/matrix with all entries set to T.
 #' @param idcol Name or index of the column which should be used to filter for \code{ids}. Default
 #'  is \code{NULL} meaning that provided \code{ids} correspond to the row index.
 #'
@@ -41,6 +40,11 @@
 #'  When converting a sociometric data frame to an edge list to be used with relevent package, the
 #'  default behavior takes care that original values are replaced in ascending order starting with
 #'  1..n.
+#'
+#'  \code{covar_m} retrieves a (difference) matrix from covariate attributes. \code{covar_m=c("Gender", "==", "Men")}
+#'  for example retrieves a matrix where men-men dyad are set to 1 and all other combinations of
+#'  dyads is set to 0. The same code without a reference category specified \code{covar_m=c("Gender", "==")}
+#'  returns a matrix where homophilios ties (men-men or women-women) is set to 1 and all others 0.
 #'
 #' @seealso \code{rem_edge_list},
 #'
@@ -57,14 +61,18 @@
 #' #TRUE if two badges have the same "Gender" or FALSE otherwise.
 #' sameSex <- rem_covars(df.attr, ids=ub, covar_m=c("Gender", "=="))
 #'
-#' #Retrieve the three round robin matrix for given badges, where NAs are replaced by column mean.
-#' remcovars(rr_csx[[team]], ids=ub, na.replace="mean", covar_t="rr")
+#' #Retrieve a n x n matrix of Gender where men-men ties are set to 1 and all others to 0
+#' rem_covars(df.attr, covar_m=c("Gender", "==", "Men"))
+#'
+#' #Retrieve difference matrix of factor roles; if Role is factor, uses underlying numeric
+#' #representation to construct difference.
+#' rem_covars(df.attr, covar_m=c("Role", "-"))
 #'
 #' @return Matrix
 #'
 #' @export
 rem_covars <- function(df_covars, ids=NULL, covar_v=NULL,
-                       covar_m=NULL, covar_t="attr", intercept=F, idcol=NULL, ...){
+                       covar_m=NULL, covar_t="attr", idcol=NULL, ...){
 
   #retrieve attributes only for specific badges
   if (!is.null(ids) & length(ids)>0 & is.data.frame(df_covars)){
@@ -140,14 +148,22 @@ rem_covars <- function(df_covars, ids=NULL, covar_v=NULL,
 
     # if the second covar is a math symbol, we can feed it to the outer() funciton
     if (oper %in% c("+", "-", "*", "==", "/", "^", "!=") & is.na(attr)){
-      #generate difference matrix
-      v <- outer(v,v, FUN=covar_m[2])
+
+      if (is.factor(v)){
+        warning("Applying difference function to factor!")
+      }
+
+      # generate difference matrix
+      # in case v is factor, uses underlying numeric representation to generate difference
+      v <- outer(as.numeric(v),as.numeric(v), FUN=covar_m[2])
 
     # use the attribute for which we want to construct the matrix
     } else if (!is.na(attr)) {
 
       # set the selected attribute to true
-      v <- if_else(v == attr, 1, 0)
+      v <- do.call(oper, args=list(v, attr))
+
+      v[which(v == T)] <- 1
 
       # construct it as matrix
       mv <- matrix(rep(v, length(v)), ncol=length(v), byrow=T)
@@ -155,7 +171,8 @@ rem_covars <- function(df_covars, ids=NULL, covar_v=NULL,
       #generate difference matrix
       mv <- mv + t(mv)
 
-      #dichotomize matrix. == 2 because we sum.
+      #dichotomize matrix. If cell sum is 2, means attribute is the same
+      # set to 1, otherwise 0
       mv[,] <- if_else(mv == 2, 1, 0)
 
       v <- mv
@@ -200,13 +217,8 @@ rem_covars <- function(df_covars, ids=NULL, covar_v=NULL,
   #retieve round robin format.
   if (covar_t == "rr" & is.matrix(df_covars)){
 
-    v <- get_rr(df_covars, ids=ids,...)
+    v <- get_rr(df_covars, ids=ids) #extract matrix from round robin gedii_rr dataset.
 
-  }
-
-
-  if (intercept){
-    v[] <- 1
   }
 
   v
@@ -651,18 +663,17 @@ vertex_attr_to_matrix <- function(igraph, attr_name){
 
 
 
-# Extracts round-robin data from result matrix and constructs a network object
-# edge list.
+# Extracts round-robin data from raw result matrix as stored in gedii_rr dataset
+# This function is not exported and for internal use only. Usually called from rem_covars()
+# dichotomization and imputation of values is now done by rr_ratings().
 #
-get_rr <- function(rr_x, dich.by=NULL, ids=NULL, weights=NULL, df.attrs=NULL, na.replace=NULL, ...){
+get_rr <- function(rr_x, ids=NULL){
 
-  if (!is.null(dich.by) & !is.null(weights)){
-    warning("\nAttempt to dichotomize and filter edges of networks matrix at the same time!")
-  }
 
   #extract social, advice, and ease matrix. rr_csx[[teamID]] contains all three matrix in one
   #where bound by columns, i.e. horizontally one after the other.
   df <- as.data.frame(rr_x)
+
   snet <- select(df, contains("social"))
   anet <- select(df, contains("advice"))
   enet <- select(df, contains("ease"))
@@ -696,76 +707,10 @@ get_rr <- function(rr_x, dich.by=NULL, ids=NULL, weights=NULL, df.attrs=NULL, na
   }
 
 
-  #d <- dim(v)
-  #change col/row names to start from 1..n, although does not make a difference for rem()
-  #dimnames(v) <- list(c(1:d[1]), c(1:d[2]))
-
-
-  #dichotomize matrix if desired
-  if (!is.null(dich.by)) {
-    if (dich.by[1]>0){
-      snet <-  sjmisc::dicho(snet, dich.by=dich.by[1], as.num=T, suffix=NULL, append=F)
-    }
-
-    if (dich.by[2]>0){
-      anet <- sjmisc::dicho(anet, dich.by=dich.by[2], as.num=T, suffix=NULL, append=F)
-    }
-
-    if (dich.by[3]>0){
-      enet <- sjmisc::dicho(enet, dich.by=dich.by[3], as.num=T, suffix=NULL, append=F)
-    }
-  }
-
-  #remove edges (set to 0) that do not match the weights value. Useful for retrieving
-  #exclusive matrix of a certain score.
-  if (!is.null(weights)){
-    snet[snet!=weights[1]] <- 0
-    anet[anet!=weights[2]] <- 0
-    enet[enet!=weights[3]] <- 0
-  }
-
-
   #convert to matrix
   snet <- as.matrix(snet)
   anet <- as.matrix(anet)
   enet <- as.matrix(enet)
-
-
-  #how should NA values be treated?
-  if (!is.null(na.replace)){
-
-    if (na.replace == "zero"){
-      snet <- tidyr::replace_na(snet, 0)
-      anet <- tidyr::replace_na(anet, 0)
-      enet <- tidyr::replace_na(enet, 0)
-
-      #replace NA values in matrix with mean column values
-    } else if (na.replace == "mean"){
-
-      #replace NA values by column mean
-      snet <- apply(snet, 2, function(col){
-        col[is.na(col)] <- mean(col, na.rm=TRUE)
-        round(col,0)
-      })
-
-      anet <- apply(anet, 2, function(col){
-        col[is.na(col)] <- mean(col, na.rm=TRUE)
-        round(col,0)
-      })
-
-      enet <- apply(enet, 2, function(col){
-        col[is.na(col)] <- mean(col, na.rm=TRUE)
-        round(col,0)
-      })
-
-      #set the diagonal to 0. Self-ratings  are not possible and shoud be get the mean value
-      diag(snet) <- 0
-      diag(anet) <- 0
-      diag(enet) <- 0
-
-    }
-
-  }
 
   list(m_soc=snet,m_adv=anet,m_eas=enet)
 }

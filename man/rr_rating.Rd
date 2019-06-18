@@ -5,7 +5,7 @@
 \title{Extract round-robin rating}
 \usage{
 rr_rating(x, directed = T, to.undir = "weight", as.type = "edgelist",
-  impute.na = NULL)
+  impute.na = "native")
 }
 \arguments{
 \item{x}{round-robin matrix}
@@ -20,9 +20,10 @@ See details.}
 \item{as.type}{string. The round-robin rating can be retrieved in different formats: as
 \code{"edgelist"}, \code{"network"} object, or \code{"matrix"}.}
 
-\item{impute.na}{string. Indicates how NAs should be imputed. Either \code{"mean"} or \code{"recip"}.
-The former replaces NAs with mean value of matrix while the latter replaces egos own rating (NAs)
-with ratings received from each alter.}
+\item{impute.na}{string. Indicates how NAs should be imputed \code{impute.na=["mean"|"recip"|"native"]}.
+\code{"mean"} replaces NAs with mean value of matrix while \code{"recip"} replaces egos own rating (NAs)
+with ratings received from each alter. \code{"native"} uses replacement values depending on the
+to.undir method chose.}
 }
 \value{
 tibble. In case an \code{directed=T}, a tibble with three columns: head, tail, edge, weight.
