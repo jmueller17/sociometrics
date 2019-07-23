@@ -5,7 +5,7 @@
 \title{Extract round-robin rating}
 \usage{
 rr_rating(x, directed = T, to.undir = "weight", as.type = "edgelist",
-  impute.na = "native")
+  impute.na = "without")
 }
 \arguments{
 \item{x}{round-robin matrix}
@@ -20,10 +20,8 @@ See details.}
 \item{as.type}{string. The round-robin rating can be retrieved in different formats: as
 \code{"edgelist"}, \code{"network"} object, or \code{"matrix"}.}
 
-\item{impute.na}{string. Indicates how NAs should be imputed \code{impute.na=["mean"|"recip"|"native"]}.
-\code{"mean"} replaces NAs with mean value of matrix while \code{"recip"} replaces egos own rating (NAs)
-with ratings received from each alter. \code{"native"} uses replacement values depending on the
-to.undir method chose.}
+\item{impute.na}{string. Indicates how NAs should be imputed
+\code{impute.na=["mean"|"recip"|"recip_mean","native", "without"]}. See details.}
 }
 \value{
 tibble. In case an \code{directed=T}, a tibble with three columns: head, tail, edge, weight.
@@ -75,12 +73,14 @@ is specified for \code{to.undir}, which implies to collapse the directed to an u
 a warning will be issued that the directionality of the weights will not be maintained.
 
 The \code{impute.na} parameter controls how NAs in round-robin matrix are imputed. In case
-\code{impute="recip"} entire rows of NAs (person did not rate all others) is replaced with the
+\code{impute="recip_mean"} entire rows of NAs (person did not rate all others) is replaced with the
 ratings ego has received by all alters. This means we replaced all NAs in row i with the transpose
 of ratings given in col(i). In case more than two people did not respond (more than two rows are
-all NAs), then the remaining NA entries are replaced with the mean value of the global matrix. This
-is different from \code{impute=="mean"} where all NAs are imputed by the mean of the entire
-matrix.
+all NAs), then the remaining NA entries are replaced with the mean value of the global matrix. For
+\code{impute="recip"} only, in case both ratings for a given dyad is NA, no replacement is
+carried out, leaving the entries at NA. Depending on further downstream analysis, dyads are likely
+to drop out. \code{impute="mean"} places all NAs with the mean of the entire matrix. Default value
+is "without", not imputing NA values at all.
 
 The \code{as.type} allows to select between different return types, either an edgelist, a statnet
 network object or a sociomatrix.

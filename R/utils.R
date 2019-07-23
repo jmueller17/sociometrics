@@ -213,10 +213,8 @@ mread <- function(readfn, files, pattern, ...){
 #' @param to.undir string or number. Specifies the method for collapsing directed to undirected
 #' edge list. Possible values are "min", "max", "mean", "recip", "weight", or a numeric value.
 #' See details.
-#' @param impute.na string. Indicates how NAs should be imputed \code{impute.na=["mean"|"recip"|"native"]}.
-#'  \code{"mean"} replaces NAs with mean value of matrix while \code{"recip"} replaces egos own rating (NAs)
-#'  with ratings received from each alter. \code{"native"} uses replacement values depending on the
-#'  to.undir method chose.
+#' @param impute.na string. Indicates how NAs should be imputed
+#'  \code{impute.na=["mean"|"recip"|"recip_mean","native", "without"]}. See details.
 #' @param as.type string. The round-robin rating can be retrieved in different formats: as
 #'  \code{"edgelist"}, \code{"network"} object, or \code{"matrix"}.
 #'
@@ -257,12 +255,14 @@ mread <- function(readfn, files, pattern, ...){
 #' a warning will be issued that the directionality of the weights will not be maintained.
 #'
 #' The \code{impute.na} parameter controls how NAs in round-robin matrix are imputed. In case
-#' \code{impute="recip"} entire rows of NAs (person did not rate all others) is replaced with the
+#' \code{impute="recip_mean"} entire rows of NAs (person did not rate all others) is replaced with the
 #' ratings ego has received by all alters. This means we replaced all NAs in row i with the transpose
 #' of ratings given in col(i). In case more than two people did not respond (more than two rows are
-#' all NAs), then the remaining NA entries are replaced with the mean value of the global matrix. This
-#' is different from \code{impute=="mean"} where all NAs are imputed by the mean of the entire
-#' matrix.
+#' all NAs), then the remaining NA entries are replaced with the mean value of the global matrix. For
+#' \code{impute="recip"} only, in case both ratings for a given dyad is NA, no replacement is
+#' carried out, leaving the entries at NA. Depending on further downstream analysis, dyads are likely
+#' to drop out. \code{impute="mean"} places all NAs with the mean of the entire matrix. Default value
+#' is "without", not imputing NA values at all.
 #'
 #' The \code{as.type} allows to select between different return types, either an edgelist, a statnet
 #' network object or a sociomatrix.
@@ -296,7 +296,7 @@ mread <- function(readfn, files, pattern, ...){
 #'
 #' @export
 #'
-rr_rating <- function(x, directed=T, to.undir="weight", as.type="edgelist", impute.na="native"){
+rr_rating <- function(x, directed=T, to.undir="weight", as.type="edgelist", impute.na="without"){
 
   if (!is.matrix(x)){
     stop("x requires to be of type matrix.")
@@ -321,7 +321,7 @@ rr_rating <- function(x, directed=T, to.undir="weight", as.type="edgelist", impu
     x[is.na(x)] <- mean_weight
 
   # absent ego, missing ratings of ego, but rated by all alters
-  } else if (impute.na == "recip"){
+  } else if (impute.na == "recip_mean"){
 
     # which rows are all NAs
     ri <- which(rowSums(is.na(x)) == ncol(x), arr.ind=T)
@@ -335,8 +335,24 @@ rr_rating <- function(x, directed=T, to.undir="weight", as.type="edgelist", impu
 
     diag(x) <- 0
 
+    # check if any column is NA values only, i.e. member who has not received any rating
+    if (any(colSums(is.na(x)) == nrow(x))){
+      warning("Round-robin rating with entire column of NA values!")
+    }
+
+  # use single existing entry for dyad globally. If both entries are missing, leave NA
+  } else if (impute.na == "recip"){
+
+    # which rows are all NAs
+    ri <- which(rowSums(is.na(x)) == ncol(x), arr.ind=T)
+
+    # use corresponding column of values to replace row
+    x[ri,] <- t(x[,ri])
+
+    diag(x) <- 0
+
     # check if entire columns are NA, i.e. member who has not received any rating
-    if (colSums(is.na(x)) == nrow(x)){
+    if (any(colSums(is.na(x)) == nrow(x))){
       warning("Round-robin rating with entire column of NA values!")
     }
 
@@ -357,7 +373,7 @@ rr_rating <- function(x, directed=T, to.undir="weight", as.type="edgelist", impu
     x[is.na(x)] <- 1
 
   } else {
-    warning("No NAs imputed, hope this is ok!")
+    warning("\nNo NAs imputed, hope this is ok!")
 
   }
 
@@ -387,22 +403,10 @@ rr_rating <- function(x, directed=T, to.undir="weight", as.type="edgelist", impu
     # use mean value of value pair as weight
   } else if (to.undir == "mean"){
 
-    # # how to deal with NAs?  First, replace any NAs with overall mean
-    # # value of matrix
-    # mean_weight <- mean(x, na.rm=T)
-    #
-    # rrmat <- x
-    #
-    # # replace NAs with overall mean value
-    # rrmat[is.na(rrmat)] <- mean_weight
-
     rrmat <- x
 
     # calculate mean of weights between directed edge pairs
     rrmat <- (rrmat + t(rrmat)) / 2
-
-    # reset diagonal to NA
-    # diag(rrmat) <- NA
 
     # only retain ties with same weight
   } else if (to.undir == "recip") {
@@ -435,27 +439,16 @@ rr_rating <- function(x, directed=T, to.undir="weight", as.type="edgelist", impu
 
     rrmat <- x
 
-    # # replace NAs with 0, i.e. no effect when sum
-    # rrmat[is.na(rrmat)] <- 0
-
     # calculate sum of weights between directed edge pairs
     rrmat <- (rrmat + t(rrmat))
 
-    # reset diagonal to NA
-    # diag(rrmat) <- NA
 
   } else if (to.undir == "diff") {
 
-      rrmat <- x
+    rrmat <- x
 
-      # # replace NAs with 0, i.e. no effect when subtraced
-      # rrmat[is.na(rrmat)] <- 0
-
-      # calculate sum of weights between directed edge pairs
-      rrmat <- abs(rrmat - t(rrmat))
-
-      # reset diagonal to NA (round robin: people do not rate themselves)
-      #diag(rrmat) <- NA
+    # calculate sum of weights between directed edge pairs
+    rrmat <- abs(rrmat - t(rrmat))
 
 
   } else {
