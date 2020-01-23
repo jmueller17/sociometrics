@@ -4,8 +4,15 @@
 \alias{dynam_event_presence}
 \title{Control presence of nodes for DyNAM}
 \usage{
-dynam_event_presence(bm, interact, vprefix = NULL, vpostfix = NULL,
-  fixtime = F, ids = NULL, window = 1)
+dynam_event_presence(
+  bm,
+  interact,
+  vprefix = NULL,
+  vpostfix = NULL,
+  fixtime = F,
+  ids = NULL,
+  window = 1
+)
 }
 \arguments{
 \item{bm}{Data frame with sociometric body activity}

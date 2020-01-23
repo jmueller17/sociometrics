@@ -4,8 +4,17 @@
 \alias{read_interaction}
 \title{Import interaction data}
 \usage{
-read_interaction(file, type, undirect = F, replv = F, delim = "\\t",
-  format = NULL, tz = NULL, cls = NULL, ...)
+read_interaction(
+  file,
+  type,
+  undirect = F,
+  replv = F,
+  delim = "\\t",
+  format = NULL,
+  tz = NULL,
+  cls = NULL,
+  ...
+)
 }
 \arguments{
 \item{file}{Path to source data file (xls, xlxs or csv).}

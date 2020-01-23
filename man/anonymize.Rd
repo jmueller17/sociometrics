@@ -8,11 +8,15 @@
 \usage{
 anonymize(x, ids = NULL, replv = NULL, cols = NULL, decreasing = F)
 
-\method{anonymize}{smtrx}(x, ids = NULL, replv = NULL,
-  cols = c("Badge.ID", "Other.ID"), decreasing = F)
+\method{anonymize}{smtrx}(
+  x,
+  ids = NULL,
+  replv = NULL,
+  cols = c("Badge.ID", "Other.ID"),
+  decreasing = F
+)
 
-\method{anonymize}{ego}(x, ids = NULL, replv = NULL,
-  cols = c("Badge.ID"), decreasing = F)
+\method{anonymize}{ego}(x, ids = NULL, replv = NULL, cols = c("Badge.ID"), decreasing = F)
 }
 \arguments{
 \item{x}{A data frame with one or several columns to anonymize ids. Usually these

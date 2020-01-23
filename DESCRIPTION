@@ -1,7 +1,7 @@
 Package: sociometrics
 Type: Package
 Title: Managing and analyzing timestamped wearable sensor data
-Version: 0.6.1
+Version: 0.6.2
 Author: Jörg Müller
 Maintainer: Jörg Müller <jmuller@uoc.edu>
 Authors@R: person("Jörg", "Last", email = "jmuller@uoc.edu", role = c("aut", "cre"))
@@ -29,7 +29,7 @@ URL: http://www.gedii.eu
 BugReports: https://github.com/jmueller17/sociometrics/issues
 Encoding: UTF-8
 LazyData: true 
-RoxygenNote: 6.1.1
+RoxygenNote: 7.0.2
 Suggests: knitr,
     rmarkdown
 VignetteBuilder: knitr

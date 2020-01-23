@@ -7,8 +7,7 @@
 \usage{
 cluster_ts(x, twl = 120, force.cut = "none", clusterOffset = 1)
 
-\method{cluster_ts}{smtrx}(x, twl = 120, force.cut = "none",
-  clusterOffset = 1)
+\method{cluster_ts}{smtrx}(x, twl = 120, force.cut = "none", clusterOffset = 1)
 }
 \arguments{
 \item{x}{Dataframe of interaction data.}

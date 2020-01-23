@@ -4,8 +4,18 @@
 \alias{read_body}
 \title{Import accelerometer data}
 \usage{
-read_body(file, type, undirect = F, replv = F, delim = "\\t",
-  format = NULL, tz = NULL, na.rm = F, cls = NULL, ...)
+read_body(
+  file,
+  type,
+  undirect = F,
+  replv = F,
+  delim = "\\t",
+  format = NULL,
+  tz = NULL,
+  na.rm = F,
+  cls = NULL,
+  ...
+)
 }
 \arguments{
 \item{file}{Path to source data file (xls, xlxs or csv).}

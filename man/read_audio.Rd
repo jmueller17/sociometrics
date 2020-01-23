@@ -4,8 +4,18 @@
 \alias{read_audio}
 \title{Import audio data}
 \usage{
-read_audio(file, type, ses_info = F, replv = F, delim = "\\t",
-  format = NULL, tz = NULL, na.rm = F, cls = NULL, ...)
+read_audio(
+  file,
+  type,
+  ses_info = F,
+  replv = F,
+  delim = "\\t",
+  format = NULL,
+  tz = NULL,
+  na.rm = F,
+  cls = NULL,
+  ...
+)
 }
 \arguments{
 \item{file}{Path to source data file (xls, xlxs or csv).}

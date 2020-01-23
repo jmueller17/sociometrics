@@ -4,8 +4,7 @@
 \alias{parse.ego}
 \title{Parse ego-based data}
 \usage{
-\method{parse}{ego}(raw_df, format = NULL, as_posixct = T,
-  ts_col = 1, tz = NULL)
+\method{parse}{ego}(raw_df, format = NULL, as_posixct = T, ts_col = 1, tz = NULL)
 }
 \arguments{
 \item{raw_df}{Data frame as result of \code{read_*} functions. One column holds a character representation of timestamp values.}

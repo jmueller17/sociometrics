@@ -4,8 +4,14 @@
 \alias{rr_rating}
 \title{Extract round-robin rating}
 \usage{
-rr_rating(x, directed = T, to.undir = "weight", as.type = "edgelist",
-  impute.na = "without")
+rr_rating(
+  x,
+  directed = T,
+  to.undir = "weight",
+  as.type = "edgelist",
+  impute.na = "without",
+  shuffle = F
+)
 }
 \arguments{
 \item{x}{round-robin matrix}
@@ -22,6 +28,8 @@ See details.}
 
 \item{impute.na}{string. Indicates how NAs should be imputed
 \code{impute.na=["mean"|"recip"|"recip_mean","native", "without"]}. See details.}
+
+\item{shuffle}{logical. Default is \code{FALSE}. Reshuffels the column and row names of matrix at random.}
 }
 \value{
 tibble. In case an \code{directed=T}, a tibble with three columns: head, tail, edge, weight.
@@ -84,6 +92,12 @@ is "without", not imputing NA values at all.
 
 The \code{as.type} allows to select between different return types, either an edgelist, a statnet
 network object or a sociomatrix.
+
+If \code{shuffle=T} changes the order of column and rownames at random. Can be used for 
+manually constructing a QAP permutation test. In detail: retrieves existing colnames (rownames) from
+matrix and draws equal size sample. The random ordered column (row) names are then re-assigned before 
+ordering the matrix rownames and colnames, i.e. changing effectively the order of the column (row)
+values.
 }
 \examples{
 #construct matrix

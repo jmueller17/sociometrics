@@ -4,8 +4,15 @@
 \alias{rem_covars}
 \title{Convert covariate factors to logical vector}
 \usage{
-rem_covars(df_covars, ids = NULL, covar_v = NULL, covar_m = NULL,
-  covar_t = "attr", idcol = NULL, ...)
+rem_covars(
+  df_covars,
+  ids = NULL,
+  covar_v = NULL,
+  covar_m = NULL,
+  covar_t = "attr",
+  idcol = NULL,
+  ...
+)
 }
 \arguments{
 \item{df_covars}{Dataframe or matrix which contains covariate information. This can either be

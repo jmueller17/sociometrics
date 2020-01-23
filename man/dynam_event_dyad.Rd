@@ -4,8 +4,15 @@
 \alias{dynam_event_dyad}
 \title{Format edge list for DyNAM}
 \usage{
-dynam_event_dyad(x, twl = 0, vprefix = NULL, vpostfix = NULL,
-  use.labels = F, time = 1, ...)
+dynam_event_dyad(
+  x,
+  twl = 0,
+  vprefix = NULL,
+  vpostfix = NULL,
+  use.labels = F,
+  time = 1,
+  ...
+)
 }
 \arguments{
 \item{x}{Dyadic data. Accepted formas are "matrix" (adjacency), "network" or "edgelist" objects

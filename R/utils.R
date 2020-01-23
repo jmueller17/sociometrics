@@ -217,6 +217,7 @@ mread <- function(readfn, files, pattern, ...){
 #'  \code{impute.na=["mean"|"recip"|"recip_mean","native", "without"]}. See details.
 #' @param as.type string. The round-robin rating can be retrieved in different formats: as
 #'  \code{"edgelist"}, \code{"network"} object, or \code{"matrix"}.
+#' @param shuffle logical. Default is \code{FALSE}. Reshuffels the column and row names of matrix at random. 
 #'
 #'
 #' @details Round robin ratings are directional where person A rates person B while person B can
@@ -266,6 +267,12 @@ mread <- function(readfn, files, pattern, ...){
 #'
 #' The \code{as.type} allows to select between different return types, either an edgelist, a statnet
 #' network object or a sociomatrix.
+#' 
+#' If \code{shuffle=T} changes the order of column and rownames at random. Can be used for 
+#' manually constructing a QAP permutation test. In detail: retrieves existing colnames (rownames) from
+#' matrix and draws equal size sample. The random ordered column (row) names are then re-assigned before 
+#' ordering the matrix rownames and colnames, i.e. changing effectively the order of the column (row)
+#' values.   
 #'
 #' @return tibble. In case an \code{directed=T}, a tibble with three columns: head, tail, edge, weight.
 #'  In case \code{directed=F} a tibble with two columns only: edge, weight.
@@ -296,7 +303,7 @@ mread <- function(readfn, files, pattern, ...){
 #'
 #' @export
 #'
-rr_rating <- function(x, directed=T, to.undir="weight", as.type="edgelist", impute.na="without"){
+rr_rating <- function(x, directed=T, to.undir="weight", as.type="edgelist", impute.na="without", shuffle=F){
 
   if (!is.matrix(x)){
     stop("x requires to be of type matrix.")
@@ -459,6 +466,19 @@ rr_rating <- function(x, directed=T, to.undir="weight", as.type="edgelist", impu
 
   diag(rrmat) <- NA
 
+  
+  # reshuffle rows and columns of matrix. Can be used for QAP
+  if (shuffle){
+
+      cname <- sample(colnames(rrmat), ncol(rrmat))
+      rname <- sample(rownames(rrmat), nrow(rrmat))
+
+      colnames(rrmat) <- cname
+      rownames(rrmat) <- rname
+
+      rrmat <- rrmat[order(rownames(rrmat)),order(colnames(rrmat))]
+  }
+  
 
   # Convert to edge list by constructing network object
   rrnet <- network::network(rrmat, directed=T, ignore.eval=F, names.eval="weight")

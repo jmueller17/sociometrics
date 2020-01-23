@@ -4,8 +4,15 @@
 \alias{qexpl}
 \title{Quick visual explorations of sociometric datasets}
 \usage{
-qexpl(x, measure = NULL, title = "", size = 1, colour = NULL,
-  alpha = 1, leg.pos = "none")
+qexpl(
+  x,
+  measure = NULL,
+  title = "",
+  size = 1,
+  colour = NULL,
+  alpha = 1,
+  leg.pos = "none"
+)
 }
 \arguments{
 \item{x}{Data frame with sociometric data.}
