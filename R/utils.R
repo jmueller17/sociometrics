@@ -255,15 +255,21 @@ mread <- function(readfn, files, pattern, ...){
 #' is specified for \code{to.undir}, which implies to collapse the directed to an undirected edge list,
 #' a warning will be issued that the directionality of the weights will not be maintained.
 #'
-#' The \code{impute.na} parameter controls how NAs in round-robin matrix are imputed. In case
-#' \code{impute="recip_mean"} entire rows of NAs (person did not rate all others) is replaced with the
-#' ratings ego has received by all alters. This means we replaced all NAs in row i with the transpose
-#' of ratings given in col(i). In case more than two people did not respond (more than two rows are
-#' all NAs), then the remaining NA entries are replaced with the mean value of the global matrix. For
-#' \code{impute="recip"} only, in case both ratings for a given dyad is NA, no replacement is
-#' carried out, leaving the entries at NA. Depending on further downstream analysis, dyads are likely
-#' to drop out. \code{impute="mean"} places all NAs with the mean of the entire matrix. Default value
-#' is "without", not imputing NA values at all.
+#' The \code{impute.na} parameter controls how NAs in round-robin matrix are imputed. It takes the following 
+#' values: 
+#' 
+#' \describe{
+#'   \item{"recip"}{In case a person did not respond and there is no rating of alters, the NAs are 
+#'    replaced with ratings received by alter. This means we replaced all NAs in row i with the transpose
+#'    of ratings given in col(i). In case two ratings are absent, NA remains.}
+#'   \item{"recip_mean"}{Same as 'recip' with the difference that remaining NAs will be replaced with mean value 
+#'    of all entries}
+#'   \item{"mean"}{Replaces all NA entries with mean value of matrix}
+#'   \item{"native"}{Depends on to.undir options set. For 'sum' and 'diff' will use 0 for NA replacement to have 
+#'   no effect. For 'prod' will use 1 for NA replacement in order to have no effect.}
+#'   \item{"without"}{Default value. Will not impute any NAs and thus does not modify matrix}
+#' }
+#' 
 #'
 #' The \code{as.type} allows to select between different return types, either an edgelist, a statnet
 #' network object or a sociomatrix.
