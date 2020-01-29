@@ -205,13 +205,19 @@ mread <- function(readfn, files, pattern, ...){
 #'  edge list, a network object or a matrix. It performs several transformations if required,
 #'  i.e. collapses directed ties to undirected ties or imputes NA values. If directed ties are
 #'  converted to undirected ties, several methods can be specified for conversion such as using
-#'  only the max or minmum value, the sum, product or mean scores.
+#'  only the max or minmum value, the sum, product or mean scores. Also can aggregate network 
+#'  ties and convert value ties into binary ones, dichotomizing the network at a certain
+#'  threshold. 
+#'  
+#'  The order in which these operations are carried out is: first, imputation, second, to-undirected ties, 
+#'  and last dichotomization. 
 #'
 #' @param x round-robin matrix
 #' @param directed logical. If set to \code{TRUE} will retain a directed edge list. If set to
-#'  \code{directed=F} the \code{weight} of each edge will be calculated according to \code{to.undir}.
+#'  \code{directed=FALSE} the \code{weight} of each edge will be calculated according to \code{to.undir}.
+#' @param dich.at numeric. Dichotomizes the matrix at the specified value (included).
 #' @param to.undir string or number. Specifies the method for collapsing directed to undirected
-#' edge list. Possible values are "min", "max", "mean", "recip", "weight", or a numeric value.
+#' edge list. Possible values are "min", "max", "mean", "recip", "weight".
 #' See details.
 #' @param impute.na string. Indicates how NAs should be imputed
 #'  \code{impute.na=["mean"|"recip"|"recip_mean","native", "without"]}. See details.
@@ -225,11 +231,10 @@ mread <- function(readfn, files, pattern, ...){
 #'  need to be collapsed, i.e. the directional ties are converted into undirectional ones based upon
 #'  certain rules to be controlled by the two parameters \code{directed} and \code{to.undir}.
 #'
-#'  The \code{to.undir} parameter takes the following values:
+#'  The \code{to.undir} controls how directed ties are converted to unidirectional ties. The parameter 
+#'  takes the following values:
 #'
 #'  \describe{
-#'    \item{numeric value}{A numeric value will dichotomize the round robin matrix at the provided
-#'     value and set all ties with a weight >= to.undir to 1, or 0 otherwise.}
 #'    \item{"min"}{Will retain the minimum weight of two given ties between node pairs. If the weight
 #'     of A->B = 2 and the weight of B->A = 4, then 2 will be retained for both ties.}
 #'    \item{"max"}{Will retain the maximum weight of two given ties between node pairs. If the weight
@@ -247,6 +252,9 @@ mread <- function(readfn, files, pattern, ...){
 #'    \item{"diff"}{Absolute difference between two dyad scores. A->B=2 and B->A=5 produces
 #'     abs(2-5)=3}
 #'  }
+#'  
+#' The \code{dich.at} dichotomizes the matrix and sets all ties with \code{dich.at>=number} to 1 and 0 
+#' otherwise. This maintains directionality of ties. 
 #'
 #' At the same time, \code{directed} controls if the resulting edge list maintains directed edges
 #' or undirected. In the latter case, \code{\link{mreverse}} is applied to obtain an undirected
@@ -259,8 +267,8 @@ mread <- function(readfn, files, pattern, ...){
 #' values: 
 #' 
 #' \describe{
-#'   \item{"recip"}{In case a person did not respond and there is no rating of alters, the NAs are 
-#'    replaced with ratings received by alter. This means we replaced all NAs in row i with the transpose
+#'   \item{"recip"}{In case a ego did not respond and there is no rating of alters, the NAs are 
+#'    replaced with ratings of alter. This means we replaced all NAs in row i with the transpose
 #'    of ratings given in col(i). In case two ratings are absent, NA remains.}
 #'   \item{"recip_mean"}{Same as 'recip' with the difference that remaining NAs will be replaced with mean value 
 #'    of all entries}
@@ -297,7 +305,7 @@ mread <- function(readfn, files, pattern, ...){
 #' rr_rating(rrmat, directed=F, to.undir="max")
 #'
 #' #dichotomize matrix at weight 3 or above
-#' rr_rating(rrmat, directed=T, to.undir=3)
+#' rr_rating(rrmat, directed=T, dich.at=3)
 #'
 #' #retain "mean" values
 #' rr_rating(rrmat, directed=F, to.undir="mean")
@@ -309,7 +317,7 @@ mread <- function(readfn, files, pattern, ...){
 #'
 #' @export
 #'
-rr_rating <- function(x, directed=T, to.undir="weight", as.type="edgelist", impute.na="without", shuffle=F){
+rr_rating <- function(x, directed=T, dich.at=NULL, to.undir="weight", as.type="edgelist", impute.na="without", shuffle=F){
 
   if (!is.matrix(x)){
     stop("x requires to be of type matrix.")
@@ -317,7 +325,7 @@ rr_rating <- function(x, directed=T, to.undir="weight", as.type="edgelist", impu
 
 
   # if a directed edge list is required, it makes no sense to merge values!
-  if (directed == T & (is.numeric(to.undir) | to.undir %in% c("min", "max", "mean", "recip", "prod", "sum"))){
+  if (directed == T & (to.undir %in% c("min", "max", "mean", "recip", "prod", "sum"))){
     warning("Using to.undir %in% c('min','max','mean','recip', 'prod', 'sum') produces identical weights for directed edges!")
 
     # if matrix is converted to undirected network (edge list), then the scores need to
@@ -325,7 +333,8 @@ rr_rating <- function(x, directed=T, to.undir="weight", as.type="edgelist", impu
   } else if (directed == F & to.undir == "weight") {
     stop("Converting to undirected matrix requires to specify to.undir conversion method!")
   }
-
+  
+  
 
   # impute NAs
   if (impute.na == "mean") {
@@ -381,97 +390,100 @@ rr_rating <- function(x, directed=T, to.undir="weight", as.type="edgelist", impu
   # replace NAs with 1, i.e. no effect when multiplied
   } else if (impute.na == "native" & to.undir %in% c("prod")) {
 
-    warning("NAs of round-robin matrix imputed with 1!")
+    warning("\nNAs of round-robin matrix imputed with 1!")
 
     x[is.na(x)] <- 1
 
-  } else {
-    warning("\nNo NAs imputed, hope this is ok!")
+  } else if (impute.na == "native") {
+      
+      warning("\nNo NAs imputed. Note that 'native' requires to.undir = sum | diff | prod \n ")
 
+  } else if (impute.na == "without") {
+      
+      message("\nNo NAs imputed. \n")
+      
+  } else {
+      warning("\nUnrecognized parameter for impute.na. No NAs imputed! \n")
   }
 
 
-  # decide how to use weights: mean, min, max, dichotomize
-
-  # use numeric value to dichotomize matrix to 1/0
-  # can still be directed.
-  if (is.numeric(to.undir)){
-
-    rrmat <- dplyr::if_else(x[,] >= to.undir, 1, 0)
-
-    rrmat <- matrix(rrmat, nrow=dim(x)[1], ncol=dim(x)[2], dimnames = dimnames(x))
-
-    # retain min value of value pair as weight
-  } else if (to.undir == "min"){
-
+  # decide how to use weights, i.e collapse 
+  if (directed == F & to.undir == "min"){
+    
     # returns the pairwise minimum of edges
     # NAs caused by non-response of A are replaced with value of B rating A.
-    rrmat <- pmin(x, t(x), na.rm=T)
-
+    x <- pmin(x, t(x), na.rm=T)
+    
     # retain max value of value pair as weight
-  } else if (to.undir == "max"){
+  } else if (directed == F & to.undir == "max"){
 
-    rrmat <- pmax(x, t(x), na.rm=T)
+    x <- pmax(x, t(x), na.rm=T)
 
     # use mean value of value pair as weight
-  } else if (to.undir == "mean"){
-
-    rrmat <- x
+  } else if (directed == F & to.undir == "mean"){
 
     # calculate mean of weights between directed edge pairs
-    rrmat <- (rrmat + t(rrmat)) / 2
+    x <- (x + t(x)) / 2
 
     # only retain ties with same weight
-  } else if (to.undir == "recip") {
+  } else if (directed == F & to.undir == "recip") {
 
     # which ties are reciprocal, i.e. have the same value?
     recipm <- (x == t(x))
 
     # if ties have same value us it, otherwise set to 0
-    rrmat <- dplyr::if_else(recipm, x, 0, missing=0)
+    xvec <- dplyr::if_else(recipm, x, 0, missing=0)
 
     # reconstruct matrix
-    rrmat <- matrix(rrmat, nrow=dim(x)[1], ncol=dim(x)[2], dimnames = dimnames(x))
+    x <- matrix(xvec, nrow=dim(x)[1], ncol=dim(x)[2], dimnames = dimnames(x))
 
     # retain rr score as is, including if to.undir="weight"
-  } else if (to.undir == "prod") {
+  } else if (directed == F & to.undir == "prod") {
 
-    rrmat <- x
+    #x <- x
 
     # # replace NAs with 1, i.e. no effect when multiplied
     # rrmat[is.na(rrmat)] <- 1
 
     # calculate prod of weights between directed edge pairs
-    rrmat <- (rrmat * t(rrmat))
+    x <- (x * t(x))
 
-    # reset diagonal to NA
-    #diag(rrmat) <- NA
+  } else if (directed == F & to.undir == "sum") {
 
-
-  } else if (to.undir == "sum") {
-
-    rrmat <- x
+    #rrmat <- x
 
     # calculate sum of weights between directed edge pairs
-    rrmat <- (rrmat + t(rrmat))
+    x <- (x + t(x))
 
 
-  } else if (to.undir == "diff") {
+  } else if (directed == F & to.undir == "diff") {
 
-    rrmat <- x
+    #rrmat <- x
 
     # calculate sum of weights between directed edge pairs
-    rrmat <- abs(rrmat - t(rrmat))
+    x <- abs(x - t(x))
 
-
-  } else {
-
-    rrmat <- x
   }
 
+  
+  
+  # use numeric value to dichotomize matrix to 1/0
+  if (is.numeric(dich.at)){
+    
+    xvec <- dplyr::if_else(x[,] >= dich.at, 1, 0)
+    
+    x <- matrix(xvec, nrow=dim(x)[1], ncol=dim(x)[2], dimnames = dimnames(x))
+    
+  } else if (is.numeric(to.undir)){
+      warning("\nto.undir=number is replaced by 'dich.by'\n")
+  }
+  
+  diag(x) <- NA
 
-  diag(rrmat) <- NA
-
+  rrmat <- x
+  
+  colnames(rrmat) <- colnames(x)
+  rownames(rrmat) <- rownames(x)
   
   # reshuffle rows and columns of matrix. Can be used for QAP
   if (shuffle){
@@ -487,15 +499,16 @@ rr_rating <- function(x, directed=T, to.undir="weight", as.type="edgelist", impu
   
 
   # Convert to edge list by constructing network object
-  rrnet <- network::network(rrmat, directed=T, ignore.eval=F, names.eval="weight")
+  rrnet <- network::network(rrmat, directed=directed, ignore.eval=F, names.eval="weight")
 
   vnames <- rrnet %v% "vertex.names"
-
+  
   # extract directed edge list
-  el <- network::as.edgelist(rrnet, attrname="weight")
-  el[,c(1,2)] <- vnames[el[,c(1,2)]] #replace matrix col indicies with vertex names
-
-  el <- as_tibble(el[,])
+  el <- network::as.edgelist(rrnet, attrname="weight", output="tibble")
+  
+  #replace internal node ids (1..) with real vertex names
+  el$.tail <- vnames[el$.tail]
+  el$.head <- vnames[el$.head]
 
 
   # collapse to undirected edge list. We can assume that weights have been
@@ -507,18 +520,16 @@ rr_rating <- function(x, directed=T, to.undir="weight", as.type="edgelist", impu
 
     # retain distinct ones. two edge entries should have same weight!
     el %<>%
-      dplyr::transmute(edge = edge,
-                       weight = V3) %>%
-      dplyr::distinct()
+        dplyr::select(edge, weight) %>%
+        dplyr::distinct()
 
-    # retain directed edge list
+  # retain directed edge list
   } else if (directed == T){
 
     el %<>%
-      dplyr::transmute(head = V1,
-                tail = V2,
-                edge = paste0(V1, "-", V2),
-                weight = V3)
+      dplyr::transmute(
+                edge = paste0(.head, "-", .tail),
+                weight = weight)
   }
 
 

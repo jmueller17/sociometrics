@@ -7,6 +7,7 @@
 rr_rating(
   x,
   directed = T,
+  dich.at = NULL,
   to.undir = "weight",
   as.type = "edgelist",
   impute.na = "without",
@@ -17,10 +18,12 @@ rr_rating(
 \item{x}{round-robin matrix}
 
 \item{directed}{logical. If set to \code{TRUE} will retain a directed edge list. If set to
-\code{directed=F} the \code{weight} of each edge will be calculated according to \code{to.undir}.}
+\code{directed=FALSE} the \code{weight} of each edge will be calculated according to \code{to.undir}.}
+
+\item{dich.at}{numeric. Dichotomizes the matrix at the specified value (included).}
 
 \item{to.undir}{string or number. Specifies the method for collapsing directed to undirected
-edge list. Possible values are "min", "max", "mean", "recip", "weight", or a numeric value.
+edge list. Possible values are "min", "max", "mean", "recip", "weight".
 See details.}
 
 \item{as.type}{string. The round-robin rating can be retrieved in different formats: as
@@ -42,7 +45,12 @@ The \code{data(gedii_rr)} of package \code{gediismtrx} provides a matrix of
  edge list, a network object or a matrix. It performs several transformations if required,
  i.e. collapses directed ties to undirected ties or imputes NA values. If directed ties are
  converted to undirected ties, several methods can be specified for conversion such as using
- only the max or minmum value, the sum, product or mean scores.
+ only the max or minmum value, the sum, product or mean scores. Also can aggregate network 
+ ties and convert value ties into binary ones, dichotomizing the network at a certain
+ threshold. 
+ 
+ The order in which these operations are carried out is: first, imputation, second, to-undirected ties, 
+ and last dichotomization.
 }
 \details{
 Round robin ratings are directional where person A rates person B while person B can
@@ -50,11 +58,10 @@ Round robin ratings are directional where person A rates person B while person B
  need to be collapsed, i.e. the directional ties are converted into undirectional ones based upon
  certain rules to be controlled by the two parameters \code{directed} and \code{to.undir}.
 
- The \code{to.undir} parameter takes the following values:
+ The \code{to.undir} controls how directed ties are converted to unidirectional ties. The parameter 
+ takes the following values:
 
  \describe{
-   \item{numeric value}{A numeric value will dichotomize the round robin matrix at the provided
-    value and set all ties with a weight >= to.undir to 1, or 0 otherwise.}
    \item{"min"}{Will retain the minimum weight of two given ties between node pairs. If the weight
     of A->B = 2 and the weight of B->A = 4, then 2 will be retained for both ties.}
    \item{"max"}{Will retain the maximum weight of two given ties between node pairs. If the weight
@@ -72,6 +79,9 @@ Round robin ratings are directional where person A rates person B while person B
    \item{"diff"}{Absolute difference between two dyad scores. A->B=2 and B->A=5 produces
     abs(2-5)=3}
  }
+ 
+The \code{dich.at} dichotomizes the matrix and sets all ties with \code{dich.at>=number} to 1 and 0 
+otherwise. This maintains directionality of ties. 
 
 At the same time, \code{directed} controls if the resulting edge list maintains directed edges
 or undirected. In the latter case, \code{\link{mreverse}} is applied to obtain an undirected
@@ -84,8 +94,8 @@ The \code{impute.na} parameter controls how NAs in round-robin matrix are impute
 values: 
 
 \describe{
-  \item{"recip"}{In case a person did not respond and there is no rating of alters, the NAs are 
-   replaced with ratings received by alter. This means we replaced all NAs in row i with the transpose
+  \item{"recip"}{In case a ego did not respond and there is no rating of alters, the NAs are 
+   replaced with ratings of alter. This means we replaced all NAs in row i with the transpose
    of ratings given in col(i). In case two ratings are absent, NA remains.}
   \item{"recip_mean"}{Same as 'recip' with the difference that remaining NAs will be replaced with mean value 
    of all entries}
@@ -119,7 +129,7 @@ rr_rating(rrmat, directed=F, to.undir="min")
 rr_rating(rrmat, directed=F, to.undir="max")
 
 #dichotomize matrix at weight 3 or above
-rr_rating(rrmat, directed=T, to.undir=3)
+rr_rating(rrmat, directed=T, dich.at=3)
 
 #retain "mean" values
 rr_rating(rrmat, directed=F, to.undir="mean")
