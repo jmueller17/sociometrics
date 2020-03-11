@@ -12,5 +12,5 @@ Collection of R tools for working with wearable sensors data, specifically Socio
   more specific functionalities to feed sociometric data to other downstream analysis. 
   
   The devepment of the code has been carried out within the framework of the H2020
-  [GEDII](http://www.gedii.eu) project, which has received ffunding from the European Commission under the 
+  [GEDII](http://www.gedii.eu) project, which has received funding from the European Commission under the 
   Grant Agreement nº 665851. 
