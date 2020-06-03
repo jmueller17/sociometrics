@@ -346,11 +346,28 @@ rr_rating <- function(x, directed=T, dich.at=NULL, to.undir="weight", as.type="e
   } else if (impute.na == "recip_mean"){
 
     # which rows are all NAs
-    ri <- which(rowSums(is.na(x)) == ncol(x), arr.ind=T)
+    #ri <- which(rowSums(is.na(x)) == ncol(x), arr.ind=T)
 
     # use corresponding column of values to replace row
-    x[ri,] <- t(x[,ri])
+    #x[ri,] <- t(x[,ri])
 
+    #manual replacement. 
+    for (r in 1:nrow(x)){
+      for (c in 1:ncol(x)) {
+        val  <- x[r,c]
+        tval <- x[c,r]
+        
+        if (is.na(val) & !is.na(tval)){
+          x[r,c] <- tval
+          
+        } else if (!is.na(val) & is.na(tval) ){
+          x[c,r] <- val  
+          
+        } 
+      }
+    }
+    
+    
     # in case of two or more people missing, replace by mean.
     mean_weight <- mean(x, na.rm=T)
     x[is.na(x)] <- mean_weight
@@ -366,11 +383,28 @@ rr_rating <- function(x, directed=T, dich.at=NULL, to.undir="weight", as.type="e
   } else if (impute.na == "recip"){
 
     # which rows are all NAs
-    ri <- which(rowSums(is.na(x)) == ncol(x), arr.ind=T)
+    #ri <- which(rowSums(is.na(x)) == ncol(x), arr.ind=T)
 
     # use corresponding column of values to replace row
-    x[ri,] <- t(x[,ri])
+    #x[ri,] <- t(x[,ri])
+    
+    #manual replacement. 
+    for (r in 1:nrow(x)){
+      for (c in 1:ncol(x)) {
+        val  <- x[r,c]
+        tval <- x[c,r]
+        
+        if (is.na(val) & !is.na(tval)){
+          x[r,c] <- tval
+          
+        } else if (!is.na(val) & is.na(tval) ){
+          x[c,r] <- val  
+          
+        } 
+      }
+    }
 
+    
     diag(x) <- 0
 
     # check if entire columns are NA, i.e. member who has not received any rating
