@@ -345,11 +345,6 @@ rr_rating <- function(x, directed=T, dich.at=NULL, to.undir="weight", as.type="e
   # absent ego, missing ratings of ego, but rated by all alters
   } else if (impute.na == "recip_mean"){
 
-    # which rows are all NAs
-    #ri <- which(rowSums(is.na(x)) == ncol(x), arr.ind=T)
-
-    # use corresponding column of values to replace row
-    #x[ri,] <- t(x[,ri])
 
     #manual replacement. 
     for (r in 1:nrow(x)){
@@ -382,11 +377,6 @@ rr_rating <- function(x, directed=T, dich.at=NULL, to.undir="weight", as.type="e
   # use single existing entry for dyad globally. If both entries are missing, leave NA
   } else if (impute.na == "recip"){
 
-    # which rows are all NAs
-    #ri <- which(rowSums(is.na(x)) == ncol(x), arr.ind=T)
-
-    # use corresponding column of values to replace row
-    #x[ri,] <- t(x[,ri])
     
     #manual replacement. 
     for (r in 1:nrow(x)){
