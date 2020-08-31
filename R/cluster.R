@@ -195,7 +195,7 @@ cluster_ts.smtrx <- function(x, twl=120, force.cut="none",  clusterOffset=1){
   }
 
   #create/reset cluster ids column in x
-  x$clusterTS <- NA
+  x$clusterTS <- as.double(NA)
 
   #counter of current cluster
   clusterID <- clusterOffset
@@ -215,7 +215,6 @@ cluster_ts.smtrx <- function(x, twl=120, force.cut="none",  clusterOffset=1){
   }
 
   rowcount <- 1
-
 
   #aggregate timestamp to session while inside the time window
   for (i in 2:nrow(x)){
